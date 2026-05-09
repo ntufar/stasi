@@ -14,6 +14,7 @@ import com.example.stasi.data.local.RouteStopCacheEntity
 import com.example.stasi.data.local.StasiDao
 import com.example.stasi.data.util.EndpointRateLimiter
 import com.example.stasi.data.util.normalizeGreek
+import com.example.stasi.data.util.parseArrivalMinutes
 
 private const val META_LINES = "lines"
 private const val TWENTY_FOUR_H_MS = 24L * 60 * 60 * 1000
@@ -342,7 +343,7 @@ class OasaRepository(
     private suspend fun mapArrivalJson(j: OasaArrivalJson, stopCode: String, now: Long): ArrivalCacheEntity? {
         val route = j.routeCode?.trim().orEmpty().ifBlank { return null }
         val veh = j.vehCode?.trim().orEmpty().ifBlank { "?" }
-        val mins = parseMinutes(j.btime2)
+        val mins = parseArrivalMinutes(j.btime2)
         val routeRow = dao.routeByCode(route)
         val dest = j.routeDescr?.trim().orEmpty().ifBlank { routeRow?.descr ?: route }
         val lineCodeValue = j.lineCode?.trim().orEmpty().ifBlank { routeRow?.lineCode.orEmpty() }
@@ -362,14 +363,6 @@ class OasaRepository(
             fetchedAtMillis = now,
         )
     }
-}
-
-private fun parseMinutes(raw: String?): Int {
-    val t = raw?.trim().orEmpty()
-    if (t.isEmpty()) return 999
-    val digits = t.filter { it.isDigit() }
-    if (digits.isEmpty()) return 999
-    return digits.toIntOrNull() ?: 999
 }
 
 private fun OasaStopXYJson.descrValue(): String =
