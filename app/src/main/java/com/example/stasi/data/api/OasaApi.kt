@@ -1,5 +1,6 @@
 package com.example.stasi.data.api
 
+import java.util.concurrent.TimeUnit
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.POST
@@ -53,6 +54,10 @@ interface OasaApi {
 
 fun createOasaApi(): OasaApi {
     val client = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(45, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val req = chain.request().newBuilder()
                 .header("User-Agent", "Stasi/1.0 (+https://github.com/you/stasi)")

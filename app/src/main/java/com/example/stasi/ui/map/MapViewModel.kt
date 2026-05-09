@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.stasi.data.repository.BusOnRoute
 import com.example.stasi.data.repository.OasaRepository
 import com.example.stasi.data.repository.RouteStop
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class MapUiState(
     val manualMode: Boolean = false,
@@ -75,22 +79,64 @@ class MapViewModel(
             _uiState.update { s ->
                 s.copy(isLoading = true, error = null, buses = emptyList())
             }
-            val stops = repository.getRouteStops(code)
-            if (stops.isEmpty()) {
+            try {
+                val fetch = withTimeoutOrNull(MAP_FETCH_TIMEOUT_MS) {
+                    withContext(Dispatchers.IO) {
+                        repository.getRouteStops(code)
+                    }
+                }
+                if (fetch == null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            stops = emptyList(),
+                            error = "Λήξη χρόνου· ελέγξτε το δίκτυο ή δοκιμάστε ξανά.",
+                        )
+                    }
+                    return@launch
+                }
+                if (fetch.stops.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            stops = emptyList(),
+                            error = "Δεν βρέθηκαν στάσεις για τη διαδρομή $code.",
+                        )
+                    }
+                    return@launch
+                }
+                val routeForLive = fetch.effectiveRouteCode
+                _uiState.update {
+                    it.copy(
+                        stops = fetch.stops,
+                        appliedRouteCode = routeForLive,
+                        isLoading = false,
+                        error = null,
+                    )
+                }
+                while (isActive) {
+                    val buses = try {
+                        withContext(Dispatchers.IO) {
+                            repository.getBusesOnRoute(routeForLive)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    _uiState.update { it.copy(buses = buses) }
+                    delay(BUS_REFRESH_MS)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         stops = emptyList(),
-                        error = "Δεν βρέθηκαν στάσεις για τη διαδρομή $code.",
+                        error = e.message ?: "Σφάλμα φόρτωσης διαδρομής.",
                     )
                 }
-                return@launch
-            }
-            _uiState.update { it.copy(stops = stops, isLoading = false, error = null) }
-            while (isActive) {
-                val buses = repository.getBusesOnRoute(code)
-                _uiState.update { it.copy(buses = buses) }
-                delay(BUS_REFRESH_MS)
             }
         }
     }
@@ -111,5 +157,6 @@ class MapViewModel(
     companion object {
         const val DEFAULT_ROUTE_CODE = "2045"
         private const val BUS_REFRESH_MS = 15_000L
+        private const val MAP_FETCH_TIMEOUT_MS = 50_000L
     }
 }

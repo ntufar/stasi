@@ -112,7 +112,7 @@ fun MapScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    label = { Text("Κωδικός διαδρομής") },
+                    label = { Text("Γραμμή ή κωδικός διαδρομής") },
                     singleLine = true,
                     trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 )

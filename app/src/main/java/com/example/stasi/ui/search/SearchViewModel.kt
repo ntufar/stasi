@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.stasi.data.local.CachedLineEntity
 import com.example.stasi.data.local.CachedStopEntity
 import com.example.stasi.data.repository.OasaRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,8 +31,8 @@ class SearchViewModel(
     private var searchJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            repository.syncCatalogIncremental()
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.warmLinesCacheIfEmpty()
         }
     }
 

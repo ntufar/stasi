@@ -24,4 +24,18 @@ class GreekTextTest {
     fun normalizeGreek_trimsAndLowercases() {
         assertEquals("foo", normalizeGreek("  FOO  "))
     }
+
+    @Test
+    fun lineSearchNorm_includesPublicLineNumberForNumericQueries() {
+        val norm = lineSearchNorm("224", "224-xyz", "ΠΕΙΡΑΙΑΣ - ΚΕΝΤΡΟ")
+        assertTrue(norm.contains("224"))
+        assertTrue(norm.contains(normalizeGreek("πειραιας")))
+    }
+
+    @Test
+    fun stopSearchNorm_includesStopCode() {
+        val norm = stopSearchNorm("07001", "ΣΥΝΤΑΓΜΑ")
+        assertTrue(norm.contains("07001"))
+        assertTrue(norm.contains(normalizeGreek("συνταγμα")))
+    }
 }

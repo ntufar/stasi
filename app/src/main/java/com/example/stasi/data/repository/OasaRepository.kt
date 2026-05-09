@@ -4,6 +4,7 @@ import com.example.stasi.data.api.OasaApi
 import com.example.stasi.data.api.OasaArrivalJson
 import com.example.stasi.data.api.OasaClosestStopJson
 import com.example.stasi.data.api.OasaStopXYJson
+import com.example.stasi.data.api.OasaWebStopJson
 import com.example.stasi.data.api.createOasaApi
 import com.example.stasi.data.local.ArrivalCacheEntity
 import com.example.stasi.data.local.CacheMetaEntity
@@ -13,10 +14,19 @@ import com.example.stasi.data.local.CachedStopEntity
 import com.example.stasi.data.local.RouteStopCacheEntity
 import com.example.stasi.data.local.StasiDao
 import com.example.stasi.data.util.EndpointRateLimiter
+import com.example.stasi.data.util.lineSearchNorm
 import com.example.stasi.data.util.normalizeGreek
+import com.example.stasi.data.util.stopSearchNorm
 import com.example.stasi.data.util.parseArrivalMinutes
+import kotlinx.coroutines.CancellationException
 
-private const val META_LINES = "lines"
+/** Broad catch blocks must not swallow this or [withTimeout] / cancel never completes correctly. */
+private fun rethrowIfCancellation(e: Exception) {
+    if (e is CancellationException) throw e
+}
+
+/** Bumped so existing installs re-sync lines/stops with richer search norms (line number, codes). */
+private const val META_LINES = "lines_v2"
 private const val TWENTY_FOUR_H_MS = 24L * 60 * 60 * 1000
 private const val ARRIVAL_CACHE_MS = 30_000L
 
@@ -26,6 +36,12 @@ data class RouteStop(
     val lat: Double,
     val lng: Double,
     val order: Int,
+)
+
+data class RouteStopsFetch(
+    val stops: List<RouteStop>,
+    /** OASA route code for webGetStops / getBusLocation; may differ from what the user typed. */
+    val effectiveRouteCode: String,
 )
 
 data class BusOnRoute(
@@ -66,16 +82,17 @@ class OasaRepository(
                 return
             }
 
-            val linesJson = limiter.run { api.webGetLines() }
+            val linesJson = limiter.run(EndpointRateLimiter.EP_WEB_GET_LINES) { api.webGetLines() }
             val t = now
             val lineEntities = linesJson.mapNotNull { j ->
                 val code = j.lineCode?.trim().orEmpty().ifBlank { return@mapNotNull null }
                 val descr = j.lineDescr?.trim().orEmpty()
+                val lineId = j.lineId?.trim().orEmpty()
                 CachedLineEntity(
                     lineCode = code,
-                    lineId = j.lineId?.trim().orEmpty(),
+                    lineId = lineId,
                     descr = descr,
-                    normDescr = normalizeGreek(descr),
+                    normDescr = lineSearchNorm(lineId, code, descr),
                     fetchedAtMillis = t,
                 )
             }
@@ -86,7 +103,9 @@ class OasaRepository(
 
             for (line in lineEntities.take(maxLines)) {
                 val routesJson = try {
-                    limiter.run { api.webGetRoutes(lineCode = line.lineCode) }
+                    limiter.run(EndpointRateLimiter.gateWebGetRoutes(line.lineCode)) {
+                        api.webGetRoutes(lineCode = line.lineCode)
+                    }
                 } catch (_: Exception) {
                     continue
                 }
@@ -108,14 +127,54 @@ class OasaRepository(
                     ingestRouteStops(route.routeCode, t)
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            rethrowIfCancellation(e)
             // Offline / throttling: keep existing cache.
+        }
+    }
+
+    /** Fast path for Search screen: lines list only, no route/stop ingest (avoids starving interactive API use). */
+    suspend fun warmLinesCacheIfEmpty() {
+        ensureLinesCatalogForResolve()
+    }
+
+    /** One lightweight [webGetLines] when DB has no lines so map/search can resolve public line numbers. */
+    private suspend fun ensureLinesCatalogForResolve() {
+        val lines = try {
+            dao.allLines()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        if (lines.isNotEmpty()) return
+        try {
+            val linesJson = limiter.run(EndpointRateLimiter.EP_WEB_GET_LINES) { api.webGetLines() }
+            val t = System.currentTimeMillis()
+            val lineEntities = linesJson.mapNotNull { j ->
+                val code = j.lineCode?.trim().orEmpty().ifBlank { return@mapNotNull null }
+                val descr = j.lineDescr?.trim().orEmpty()
+                val lineId = j.lineId?.trim().orEmpty()
+                CachedLineEntity(
+                    lineCode = code,
+                    lineId = lineId,
+                    descr = descr,
+                    normDescr = lineSearchNorm(lineId, code, descr),
+                    fetchedAtMillis = t,
+                )
+            }
+            if (lineEntities.isNotEmpty()) {
+                dao.insertLines(lineEntities)
+            }
+        } catch (e: Exception) {
+            rethrowIfCancellation(e)
+            // Offline
         }
     }
 
     private suspend fun ingestRouteStops(routeCode: String, t: Long) {
         val raw = try {
-            limiter.run { api.webGetStops(routeCode = routeCode) }
+            limiter.run(EndpointRateLimiter.gateWebGetStops(routeCode)) {
+                api.webGetStops(routeCode = routeCode)
+            }
         } catch (_: Exception) {
             return
         }
@@ -132,7 +191,7 @@ class OasaRepository(
                 CachedStopEntity(
                     stopCode = code,
                     descr = descr,
-                    normDescr = normalizeGreek(descr),
+                    normDescr = stopSearchNorm(code, descr),
                     lat = lat,
                     lng = lng,
                     fetchedAtMillis = t,
@@ -193,7 +252,9 @@ class OasaRepository(
         val cached = dao.stopByCode(stopCode)
         if (cached != null) return cached.descr
         return try {
-            val row = limiter.run { api.getStopNameAndXY(stopCode = stopCode) }.firstOrNull()
+            val row = limiter.run(EndpointRateLimiter.EP_GET_STOP_XY) {
+                api.getStopNameAndXY(stopCode = stopCode)
+            }.firstOrNull()
             row?.descrValue().orEmpty().ifBlank { stopCode }
         } catch (_: Exception) {
             stopCode
@@ -216,7 +277,9 @@ class OasaRepository(
 
     private suspend fun fetchAndCacheArrivals(stopCode: String, now: Long): List<ArrivalDetail> {
         return try {
-            val json = limiter.run { api.getStopArrivals(stopCode = stopCode) }
+            val json = limiter.run(EndpointRateLimiter.EP_GET_ARRIVALS) {
+                api.getStopArrivals(stopCode = stopCode)
+            }
             val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now) }
             dao.replaceArrivals(stopCode, rows)
             rows.map { it.toDetail() }
@@ -230,10 +293,13 @@ class OasaRepository(
         }
     }
 
-    suspend fun getRouteStops(routeCode: String): List<RouteStop> {
-        return try {
-            val raw = limiter.run { api.webGetStops(routeCode = routeCode.trim()) }
-            val mapped = raw.mapNotNull { dto ->
+    suspend fun getRouteStops(routeCodeOrLineNumber: String): RouteStopsFetch {
+        val trimmed = routeCodeOrLineNumber.trim()
+        if (trimmed.isEmpty()) return RouteStopsFetch(emptyList(), trimmed)
+        ensureLinesCatalogForResolve()
+
+        fun mapWebStops(raw: List<OasaWebStopJson>): List<RouteStop> =
+            raw.mapNotNull { dto ->
                 val code = dto.stopCode?.trim().orEmpty().ifBlank { return@mapNotNull null }
                 val lat = dto.stopLat?.toDoubleOrNull() ?: return@mapNotNull null
                 val lng = dto.stopLng?.toDoubleOrNull() ?: return@mapNotNull null
@@ -246,39 +312,10 @@ class OasaRepository(
                     order = order,
                 )
             }.sortedBy { it.order }
-            val t = System.currentTimeMillis()
-            if (mapped.isNotEmpty()) {
-                dao.insertStops(
-                    mapped.map { s ->
-                        CachedStopEntity(
-                            stopCode = s.stopCode,
-                            descr = s.description,
-                            normDescr = normalizeGreek(s.description),
-                            lat = s.lat,
-                            lng = s.lng,
-                            fetchedAtMillis = t,
-                        )
-                    },
-                )
-                dao.deleteRouteStops(routeCode.trim())
-                dao.insertRouteStops(
-                    mapped.map { s ->
-                        RouteStopCacheEntity(
-                            routeCode = routeCode.trim(),
-                            stopCode = s.stopCode,
-                            routeOrder = s.order,
-                            lat = s.lat,
-                            lng = s.lng,
-                            descr = s.description,
-                            fetchedAtMillis = t,
-                        )
-                    },
-                )
-            }
-            mapped
-        } catch (_: Exception) {
+
+        suspend fun loadFromCache(routeCode: String): List<RouteStop> =
             try {
-                dao.routeStops(routeCode.trim()).map { e ->
+                dao.routeStops(routeCode).map { e ->
                     RouteStop(
                         stopCode = e.stopCode,
                         description = e.descr,
@@ -290,12 +327,97 @@ class OasaRepository(
             } catch (_: Exception) {
                 emptyList()
             }
+
+        suspend fun persistRouteStops(routeCode: String, mapped: List<RouteStop>) {
+            if (mapped.isEmpty()) return
+            val t = System.currentTimeMillis()
+            dao.insertStops(
+                mapped.map { s ->
+                    CachedStopEntity(
+                        stopCode = s.stopCode,
+                        descr = s.description,
+                        normDescr = stopSearchNorm(s.stopCode, s.description),
+                        lat = s.lat,
+                        lng = s.lng,
+                        fetchedAtMillis = t,
+                    )
+                },
+            )
+            dao.deleteRouteStops(routeCode)
+            dao.insertRouteStops(
+                mapped.map { s ->
+                    RouteStopCacheEntity(
+                        routeCode = routeCode,
+                        stopCode = s.stopCode,
+                        routeOrder = s.order,
+                        lat = s.lat,
+                        lng = s.lng,
+                        descr = s.description,
+                        fetchedAtMillis = t,
+                    )
+                },
+            )
         }
+
+        return try {
+            var effective = trimmed
+            var raw = limiter.run(EndpointRateLimiter.gateWebGetStops(trimmed)) {
+                api.webGetStops(routeCode = trimmed)
+            }
+            var mapped = mapWebStops(raw)
+            if (mapped.isEmpty()) {
+                val resolved = resolveLineToRouteCode(trimmed)
+                if (resolved != null && resolved != trimmed) {
+                    effective = resolved
+                    raw = limiter.run(EndpointRateLimiter.gateWebGetStops(effective)) {
+                        api.webGetStops(routeCode = effective)
+                    }
+                    mapped = mapWebStops(raw)
+                }
+            }
+            if (mapped.isNotEmpty()) {
+                persistRouteStops(effective, mapped)
+            }
+            RouteStopsFetch(mapped, effective)
+        } catch (e: Exception) {
+            rethrowIfCancellation(e)
+            var effective = trimmed
+            var fromCache = loadFromCache(trimmed)
+            if (fromCache.isEmpty()) {
+                val resolved = resolveLineToRouteCodeFromCache(trimmed)
+                if (resolved != null) {
+                    effective = resolved
+                    fromCache = loadFromCache(resolved)
+                }
+            }
+            RouteStopsFetch(fromCache, effective)
+        }
+    }
+
+    private suspend fun resolveLineToRouteCode(userInput: String): String? {
+        val line = dao.linesByExactCodeOrId(userInput).firstOrNull() ?: return null
+        return try {
+            val routes = limiter.run(EndpointRateLimiter.gateWebGetRoutes(line.lineCode)) {
+                api.webGetRoutes(lineCode = line.lineCode)
+            }
+            routes.firstOrNull { !it.routeCode.isNullOrBlank() }
+                ?.routeCode?.trim().orEmpty().ifBlank { null }
+        } catch (e: Exception) {
+            rethrowIfCancellation(e)
+            null
+        }
+    }
+
+    private suspend fun resolveLineToRouteCodeFromCache(userInput: String): String? {
+        val line = dao.linesByExactCodeOrId(userInput).firstOrNull() ?: return null
+        return dao.routesForLine(line.lineCode).firstOrNull()?.routeCode
     }
 
     suspend fun getBusesOnRoute(routeCode: String): List<BusOnRoute> {
         return try {
-            val raw = limiter.run { api.getBusLocation(routeCode = routeCode.trim()) }
+            val raw = limiter.run(EndpointRateLimiter.EP_BUS_LOCATION) {
+                api.getBusLocation(routeCode = routeCode.trim())
+            }
             raw.mapNotNull { dto ->
                 val no = dto.vehNo?.trim().orEmpty().ifBlank { return@mapNotNull null }
                 val lat = dto.csLat?.toDoubleOrNull() ?: return@mapNotNull null
@@ -309,7 +431,7 @@ class OasaRepository(
 
     suspend fun getClosestStops(lat: Double, lng: Double): List<NearbyStop> {
         return try {
-            val raw = limiter.run {
+            val raw = limiter.run(EndpointRateLimiter.EP_CLOSEST_STOPS) {
                 api.getClosestStops(lat = lat.toString(), lng = lng.toString())
             }
             raw.mapNotNull { it.toNearby() }

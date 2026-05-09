@@ -55,6 +55,16 @@ interface StasiDao {
     @Query("SELECT * FROM cached_lines WHERE lineCode = :lineCode LIMIT 1")
     suspend fun lineByCode(lineCode: String): CachedLineEntity?
 
+    @Query(
+        "SELECT * FROM cached_lines WHERE lineId = :input OR lineCode = :input LIMIT 5",
+    )
+    suspend fun linesByExactCodeOrId(input: String): List<CachedLineEntity>
+
+    @Query(
+        "SELECT * FROM cached_routes WHERE lineCode = :lineCode ORDER BY routeCode ASC LIMIT 8",
+    )
+    suspend fun routesForLine(lineCode: String): List<CachedRouteEntity>
+
     @Query("SELECT * FROM route_stops WHERE routeCode = :routeCode ORDER BY route_order ASC")
     suspend fun routeStops(routeCode: String): List<RouteStopCacheEntity>
 
