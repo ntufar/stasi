@@ -1,3 +1,5 @@
+# Builds lint + tests + a debug APK on every push. Download the APK from the run summary:
+#   GitHub → Actions → select the latest "Android CI" run → Artifacts → stasi-debug-apk (zip).
 name: Android CI
 
 on:
@@ -11,6 +13,44 @@ permissions:
   actions: write
 
 jobs:
+  # Standalone job so the APK is still produced when lint/tests fail (compile-only gate).
+  debug-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug --stacktrace --warning-mode all
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: stasi-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
   lint-test-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -46,18 +86,6 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest --stacktrace --warning-mode all
-
-      - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug --stacktrace --warning-mode all
-
-      - name: Upload debug APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: stasi-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 14
 
       - name: Upload lint and test reports
         if: success()

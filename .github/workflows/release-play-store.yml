@@ -38,6 +38,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   bundle:
@@ -86,14 +87,22 @@ jobs:
             echo "keyPassword=${KEYSTORE_KEY_PASSWORD}"
           } > "${{ github.workspace }}/keystore.properties"
 
-      - name: Build release bundle
-        run: ./gradlew --no-daemon bundleRelease --stacktrace --warning-mode all
+      - name: Build release bundle and APK
+        run: ./gradlew --no-daemon bundleRelease assembleRelease --stacktrace --warning-mode all
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: stasi-release-aab
           path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stasi-release-apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 90
 
