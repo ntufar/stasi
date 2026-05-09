@@ -1,0 +1,14 @@
+---
+description: Keep docs/SPEC.md in sync with product and code changes
+alwaysApply: true
+---
+
+# Specification document (`docs/SPEC.md`)
+
+Whenever you add or change a **user-visible feature**, **behavior**, **screen flow**, **data contract**, or **integration** (API, maps, caching policy), update **`docs/SPEC.md`** in the same change (or immediately after, same session).
+
+- Bump **Version** and **Date** in the header when the spec meaningfully changes.
+- Edit the relevant sections (Core Features, UI Flows, Key Behaviors, Acceptance Criteria, etc.); do not leave the spec describing outdated behavior.
+- If the change is internal-only (refactor, rename, test-only), a SPEC update is **not** required.
+
+If unsure whether the spec should change: prefer a short note in SPEC over omitting it.

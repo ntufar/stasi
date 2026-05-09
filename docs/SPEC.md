@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.2 | Date: 2026-05-09 | Author: Nicolai Tufar
+Version: 0.3 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -16,14 +16,16 @@ Primary language: Greek UI, with English fallback.
 ## 3. Core Features (MVP)
 1. Home screen with favorite stops, showing next 2 arrivals per stop live
 2. Search stops and lines by name, Greek fuzzy match (ignores accents)
-3. Arrivals screen: big minutes, line ID, destination
+3. Arrivals screen: big minutes, line ID, destination; optional **origin departure** line when the stop is not that route’s first stop (see item 7)
 4. Nearby stops using GPS, sorted by distance
 5. Route map: draw **all route stops** on the map (not only the polyline), with **clear direction of travel**:
    - stops ordered along the route with **sequence numbers** (1 … N);
    - **first stop** (departure) and **last stop** (terminus) visually distinct from middle stops (e.g. color/size);
    - **live buses** shown with **heading** (arrow or rotated icon) approximating direction toward the next segment of the route.
+   - **Initial map camera:** when a route is first shown for a given stop sequence, the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait for a fix); otherwise it **fits the whole route** in view. Periodic live refresh must **not** reset the camera. Changing route/direction (different stop sequence) runs this logic again. The **My Location** FAB still fits **route + user** in one view when pressed (with location permission).
 6. **Map → arrivals:** tapping a **stop marker** on the route map opens the **Arrivals** screen for that stop code (same as Search/Home), showing upcoming buses and times.
-7. Offline cache: lines and stops cached 24h, arrivals cached 30s
+7. **Arrivals at a stop (not the route origin):** for each upcoming service, when the viewed stop is **not** the **first stop** of that route (in OASA route order), the UI also shows **when the next bus on the same route is expected to depart from the route’s origin** (first stop), as a secondary line (Greek copy, e.g. departure-from-terminus wording). If the user is already at the origin stop, this line is omitted. Implementation uses cached or fetched route stop order plus live arrivals at the origin stop code.
+8. Offline cache: lines and stops cached 24h, arrivals cached 30s
 
 ## 4. Out of Scope for MVP
 - Ticket purchase
@@ -81,7 +83,7 @@ Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
 Arrivals → map icon → MapScreen with route polyline
 MapScreen → tap bus → show vehicle number
-MapScreen → tap stop marker → Arrivals for that stop
+MapScreen → tap stop marker → Arrivals for that stop (including origin-departure hint when applicable; see Core Features item 7)
 
 Design rules:
 - Dark theme by default, AMOLED black
@@ -96,6 +98,7 @@ Design rules:
 - Use StateFlow in ViewModel, collectAsState in Compose
 - MapLibre: add source once, update data, do not recreate style on recomposition
 - Respect cleartext: manifest already has usesCleartextTraffic=true
+- **Specification:** after any user-facing feature or behavior change, update **`docs/SPEC.md`** (version/date and the sections that describe the product). See project rule *spec-documentation*.
 
 ## 11. Performance Targets
 - Cold start < 800ms on Pixel 6
@@ -111,7 +114,9 @@ Design rules:
 - User opens app, sees favorite stop with correct minutes within 1s
 - Search "syntagma" finds "ΣΥΝΤΑΓΜΑ"
 - Map shows line 140 **polyline and stop markers** (numbered, direction clear), updates bus positions periodically
+- On first load of a route on the map, the camera **prioritizes the user’s location** (zoom ~15) when GPS is available; otherwise the route fits in view
 - Tapping a stop on the map opens arrivals for that stop
+- At a non-origin stop, arrivals list shows **origin departure** information for each route where data is available
 - App works airplane mode after first load for cached stops
 
 ## 14. Next Steps for Development

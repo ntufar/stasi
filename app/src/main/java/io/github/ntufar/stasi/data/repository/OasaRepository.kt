@@ -70,6 +70,12 @@ data class ArrivalDetail(
     val minutes: Int,
     val destinationLabel: String,
     val lineLabel: String,
+    /**
+     * When this stop is not the route's first stop, minutes until the next vehicle on [routeCode]
+     * is expected to depart from that route's origin (first stop in order).
+     */
+    val originDepartureMinutes: Int? = null,
+    val originStopDescription: String? = null,
 )
 
 data class NearbyStop(
@@ -277,6 +283,68 @@ class OasaRepository(
             row?.descrValue().orEmpty().ifBlank { stopCode }
         } catch (_: Exception) {
             stopCode
+        }
+    }
+
+    /**
+     * First stop (minimum [RouteStop.order]) for [routeCode], from cache or after a network refresh
+     * via [getRouteStops] when the cache is empty.
+     */
+    suspend fun getRouteOriginStopCode(routeCode: String): String? {
+        val rc = routeCode.trim()
+        if (rc.isEmpty()) return null
+        val fromDao = try {
+            dao.routeStops(rc).minByOrNull { it.routeOrder }?.stopCode?.trim()?.ifBlank { null }
+        } catch (_: Exception) {
+            null
+        }
+        if (fromDao != null) return fromDao
+        val fetch = getRouteStops(rc)
+        return fetch.stops.minByOrNull { it.order }?.stopCode?.trim()?.ifBlank { null }
+    }
+
+    /**
+     * Adds [ArrivalDetail.originDepartureMinutes] / [ArrivalDetail.originStopDescription] for each
+     * arrival whose route starts at a different stop than [stopCode], using live data at the origin.
+     */
+    suspend fun enrichArrivalsWithOriginBoardings(
+        stopCode: String,
+        arrivals: List<ArrivalDetail>,
+    ): List<ArrivalDetail> {
+        if (arrivals.isEmpty()) return arrivals
+        val distinctRoutes = arrivals.map { it.routeCode }.filter { it.isNotBlank() }.distinct()
+        val originByRoute = mutableMapOf<String, String>()
+        for (route in distinctRoutes) {
+            val origin = getRouteOriginStopCode(route) ?: continue
+            if (origin == stopCode) continue
+            originByRoute[route] = origin
+        }
+        if (originByRoute.isEmpty()) return arrivals
+        val labelCache = mutableMapOf<String, String>()
+        suspend fun labelFor(code: String): String =
+            labelCache.getOrPut(code) {
+                getStopLabel(code).ifBlank { code }
+            }
+        val arrivalsByOriginStop = originByRoute.values.distinct().associateWith { o ->
+            getStopArrivals(o)
+        }
+        val minutesByRoute = mutableMapOf<String, Int?>()
+        for ((route, originStop) in originByRoute) {
+            val atOrigin = arrivalsByOriginStop[originStop].orEmpty()
+            val next = atOrigin
+                .filter { it.routeCode == route }
+                .minByOrNull { it.minutes }
+                ?.minutes
+            minutesByRoute[route] = next
+        }
+        return arrivals.map { arr ->
+            val originStop = originByRoute[arr.routeCode] ?: return@map arr
+            val mins = minutesByRoute[arr.routeCode]
+            if (mins == null) arr
+            else arr.copy(
+                originDepartureMinutes = mins,
+                originStopDescription = labelFor(originStop),
+            )
         }
     }
 

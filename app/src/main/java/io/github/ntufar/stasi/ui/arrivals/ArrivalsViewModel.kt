@@ -64,7 +64,8 @@ class ArrivalsViewModel(
     private suspend fun fetchOnce() {
         runCatching {
             val title = repository.getStopLabel(stopCode)
-            val arrivals = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
+            val raw = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
+            val arrivals = repository.enrichArrivalsWithOriginBoardings(stopCode, raw)
             val fav = favoritesRepository.isFavorite(stopCode)
             _uiState.update {
                 it.copy(

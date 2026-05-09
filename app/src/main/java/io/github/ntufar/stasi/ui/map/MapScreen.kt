@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -383,6 +384,10 @@ private fun StasiMapLibre(
     val mapRefState = rememberUpdatedState(mapRef)
     val userLatLngState = rememberUpdatedState(userLatLng)
     val stopsState = rememberUpdatedState(stops)
+    val stopsFingerprint = remember(stops) {
+        stops.joinToString("|") { "${it.stopCode}:${it.order}" }
+    }
+    var initialCameraDoneForRoute by remember(stopsFingerprint) { mutableStateOf(false) }
 
     DisposableEffect(mapView) {
         mapView.getMapAsync { map ->
@@ -467,11 +472,32 @@ private fun StasiMapLibre(
         }
     }
 
-    LaunchedEffect(styleLoaded, stops) {
+    LaunchedEffect(styleLoaded, stops, userLatLng, stopsFingerprint) {
         if (!styleLoaded) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
         if (stops.isEmpty()) return@LaunchedEffect
-        fitCameraToRoute(map, stops)
+        if (initialCameraDoneForRoute) return@LaunchedEffect
+        val ul = userLatLng
+        if (ul != null) {
+            map.easeCamera(
+                CameraUpdateFactory.newLatLngZoom(LatLng(ul.first, ul.second), 15.0),
+                500,
+            )
+            initialCameraDoneForRoute = true
+            return@LaunchedEffect
+        }
+        delay(700)
+        if (initialCameraDoneForRoute) return@LaunchedEffect
+        val ulLate = userLatLngState.value
+        if (ulLate != null) {
+            map.easeCamera(
+                CameraUpdateFactory.newLatLngZoom(LatLng(ulLate.first, ulLate.second), 15.0),
+                500,
+            )
+        } else {
+            fitCameraToRoute(map, stops)
+        }
+        initialCameraDoneForRoute = true
     }
 
     AndroidView(

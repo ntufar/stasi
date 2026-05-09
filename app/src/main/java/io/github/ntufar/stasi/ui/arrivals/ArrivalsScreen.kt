@@ -105,6 +105,12 @@ fun ArrivalsScreen(
             ) {
                 items(ui.arrivals, key = { "${it.routeCode}-${it.vehCode}-${it.minutes}" }) { a ->
                     val minutesText = if (a.minutes >= 999) "—" else "${a.minutes}΄"
+                    val originText = a.originDepartureMinutes?.let { om ->
+                        if (om >= 999) return@let null
+                        val oLabel = a.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
+                        val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
+                        "Από αφετηρία$fromPart: ${om}΄"
+                    }
                     Column(
                         Modifier
                             .fillMaxWidth()
@@ -120,6 +126,14 @@ fun ArrivalsScreen(
                         )
                         Text(a.lineLabel, style = MaterialTheme.typography.titleMedium)
                         Text(a.destinationLabel, style = MaterialTheme.typography.bodyLarge)
+                        if (originText != null) {
+                            Text(
+                                originText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                     }
                 }
             }
