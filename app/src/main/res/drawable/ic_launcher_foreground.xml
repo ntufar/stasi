@@ -4,7 +4,27 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Live arrival / stop beacon -->
     <path
-        android:fillColor="#4CAF50"
-        android:pathData="M30,70 L54,30 L78,70 Z" />
+        android:fillColor="#FFB74D"
+        android:pathData="M54,23c3.9,0 7,3.1 7,7s-3.1,7 -7,7 -7,-3.1 -7,-7 3.1,-7 7,-7z" />
+    <!-- Upper cab -->
+    <path
+        android:fillColor="#4FC3F7"
+        android:pathData="M33,41h42v15h-42z" />
+    <!-- Lower body -->
+    <path
+        android:fillColor="#29B6F6"
+        android:pathData="M33,56h42v18h-42z" />
+    <!-- Windshield -->
+    <path
+        android:fillColor="#E1F5FE"
+        android:pathData="M38,44h26l-2,11h-22z" />
+    <!-- Wheels -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M37,72h12v10h-12z" />
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M59,72h12v10h-12z" />
 </vector>
