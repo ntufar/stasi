@@ -37,23 +37,8 @@ class ArrivalsViewModel(
     init {
         pollJob = viewModelScope.launch {
             while (isActive) {
-                runCatching {
-                    val title = repository.getStopLabel(stopCode)
-                    val arrivals = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
-                    val fav = favoritesRepository.isFavorite(stopCode)
-                    _uiState.update {
-                        it.copy(
-                            title = title,
-                            arrivals = arrivals,
-                            isFavorite = fav,
-                            isLoading = false,
-                            error = null,
-                        )
-                    }
-                }.onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message) }
-                }
-                delay(30_000)
+                fetchOnce()
+                delay(POLL_INTERVAL_MS)
             }
         }
     }
@@ -65,8 +50,42 @@ class ArrivalsViewModel(
         }
     }
 
+    /**
+     * Out-of-cycle refresh used by `ArrivalsScreen` when the screen returns to RESUMED, so
+     * arrivals appear up-to-date the moment the user navigates back instead of waiting up to
+     * [POLL_INTERVAL_MS] for the next tick.
+     */
+    fun refreshNow() {
+        viewModelScope.launch {
+            fetchOnce()
+        }
+    }
+
+    private suspend fun fetchOnce() {
+        runCatching {
+            val title = repository.getStopLabel(stopCode)
+            val arrivals = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
+            val fav = favoritesRepository.isFavorite(stopCode)
+            _uiState.update {
+                it.copy(
+                    title = title,
+                    arrivals = arrivals,
+                    isFavorite = fav,
+                    isLoading = false,
+                    error = null,
+                )
+            }
+        }.onFailure { e ->
+            _uiState.update { it.copy(isLoading = false, error = e.message) }
+        }
+    }
+
     override fun onCleared() {
         pollJob?.cancel()
         super.onCleared()
+    }
+
+    companion object {
+        private const val POLL_INTERVAL_MS = 30_000L
     }
 }

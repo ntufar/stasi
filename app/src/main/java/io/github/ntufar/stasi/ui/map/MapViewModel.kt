@@ -191,17 +191,8 @@ class MapViewModel(
                     }
                 }
                 while (isActive) {
-                    val buses = try {
-                        withContext(Dispatchers.IO) {
-                            repository.getBusesOnRoute(routeForLive)
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                    _uiState.update { it.copy(buses = buses) }
-                    delay(BUS_REFRESH_MS)
+                    fetchLiveData(routeForLive)
+                    delay(LIVE_REFRESH_MS)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -225,6 +216,50 @@ class MapViewModel(
         _uiState.update { it.copy(selectedVehicleNo = no) }
     }
 
+    /**
+     * Out-of-cycle refresh of buses + route stops. Triggered by `MapScreen` when the screen
+     * returns to RESUMED so the map shows fresh data immediately after the user navigates back
+     * to it, instead of waiting up to [LIVE_REFRESH_MS] for the next tick.
+     */
+    fun refreshNow() {
+        val state = _uiState.value
+        val routeCode = state.appliedRouteCode
+        if (routeCode.isBlank() || state.stops.isEmpty()) return
+        viewModelScope.launch {
+            fetchLiveData(routeCode)
+        }
+    }
+
+    private suspend fun fetchLiveData(routeCode: String) {
+        val buses = try {
+            withContext(Dispatchers.IO) {
+                repository.getBusesOnRoute(routeCode)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            emptyList()
+        }
+        _uiState.update { it.copy(buses = buses) }
+
+        val refreshed = try {
+            withContext(Dispatchers.IO) {
+                repository.getRouteStops(routeCode)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        val refreshedStops = refreshed?.stops
+        if (!refreshedStops.isNullOrEmpty()) {
+            _uiState.update { state ->
+                if (state.stops == refreshedStops) state
+                else state.copy(stops = refreshedStops)
+            }
+        }
+    }
+
     override fun onCleared() {
         routeJob?.cancel()
         super.onCleared()
@@ -232,7 +267,8 @@ class MapViewModel(
 
     companion object {
         const val DEFAULT_ROUTE_CODE = "2045"
-        private const val BUS_REFRESH_MS = 15_000L
+        /** Background poll cadence for buses + route stops while the map is open. */
+        private const val LIVE_REFRESH_MS = 15_000L
         private const val MAP_FETCH_TIMEOUT_MS = 50_000L
     }
 }

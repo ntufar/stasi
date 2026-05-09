@@ -47,6 +47,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.data.repository.BusOnRoute
 import io.github.ntufar.stasi.data.repository.RouteStop
@@ -115,6 +116,13 @@ fun MapScreen(
         },
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(vm, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            vm.refreshNow()
+        }
+    }
 
     Scaffold(
         topBar = {
