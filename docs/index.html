@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<!-- GitHub Pages: Settings → Pages → Deploy from branch → master → /docs (this repo’s default branch is master, not main) -->
+<!--
+  GitHub Pages: Settings → Pages → Deploy from branch → master → /docs (this repo’s default branch is master, not main).
+  
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -9,6 +12,8 @@
   <meta property="og:title" content="Stasi — Athens bus app">
   <meta property="og:description" content="Fast, private Android app for Athens buses and transit.">
   <meta property="og:type" content="website">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
@@ -81,6 +86,15 @@
       max-width: var(--max);
       margin: 0 auto;
       padding: 0 0.5rem;
+    }
+
+    .app-icon {
+      display: block;
+      width: 72px;
+      height: 72px;
+      margin-bottom: 1.1rem;
+      border-radius: 18px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
     }
 
     .badge {
@@ -265,6 +279,7 @@
 
   <header>
     <div class="wrap">
+      <img class="app-icon" src="favicon.svg" width="72" height="72" alt="" aria-hidden="true">
       <div class="badge">Open source · Athens transit</div>
       <h1>See your bus in under a second.</h1>
       <p class="lead">
@@ -293,7 +308,7 @@
           </article>
           <article class="card">
             <h3>Nearby &amp; maps</h3>
-            <p>GPS-sorted nearby stops and route maps with MapLibre—open maps, no proprietary keys.</p>
+            <p>GPS-sorted nearby stops and route maps with live buses and your position on the map when you allow location—MapLibre, no proprietary map keys.</p>
           </article>
           <article class="card">
             <h3>Offline-friendly cache</h3>
@@ -321,7 +336,7 @@
         <h2 id="privacy-heading">Privacy</h2>
         <div class="card">
           <p style="margin:0;color:var(--muted);font-size:0.95rem;">
-            No analytics or crash reporting in the MVP. Location is used for nearby stops only and not stored.
+            No analytics or crash reporting in the MVP. Location is used for nearby stops and for showing your position on the route map when permitted; it is not stored (see the project spec).
           </p>
         </div>
       </section>

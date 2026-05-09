@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- Matches app adaptive icon: black background + ic_launcher_foreground paths -->
+  <rect width="108" height="108" rx="24" fill="#000000"/>
+  <path fill="#FFB74D" d="M54,23c3.9,0 7,3.1 7,7s-3.1,7 -7,7 -7,-3.1 -7,-7 3.1,-7 7,-7z"/>
+  <path fill="#4FC3F7" d="M33,41h42v15h-42z"/>
+  <path fill="#29B6F6" d="M33,56h42v18h-42z"/>
+  <path fill="#E1F5FE" d="M38,44h26l-2,11h-22z"/>
+  <path fill="#37474F" d="M37,72h12v10h-12z"/>
+  <path fill="#37474F" d="M59,72h12v10h-12z"/>
+</svg>

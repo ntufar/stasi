@@ -2,6 +2,8 @@
 
 **Stasi** is a fast, privacy-minded Android app for **Athens public transport**. It talks to the official OASA Telematics API to show live arrivals, nearby stops, and route maps—without ads, sign-in, or extra clutter.
 
+**Website:** [ntufar.github.io/stasi](https://ntufar.github.io/stasi/) (landing page for the project)
+
 **Goal:** open the app and see your next bus in under a second.
 
 | | |
@@ -18,7 +20,7 @@
 - **Search** — Stops and lines by name with Greek-friendly normalization (accents ignored).
 - **Arrivals** — Large countdown-style minutes, line id, destination.
 - **Nearby** — GPS-based stops sorted by distance.
-- **Map** — Route polyline, stops, and live vehicle positions (MapLibre, no map API key).
+- **Map** — Route polyline, stops, live vehicle positions, and **your location** on the map when you allow location (MapLibre, no map API key).
 - **Offline-friendly cache** — Lines/stops cached (24h policy in product spec), arrivals short-lived cache.
 
 Design defaults: dark / AMOLED-friendly Material 3. Primary UI language Greek with English fallback where relevant.
@@ -58,13 +60,15 @@ Debug APK output:
 
 `app/build/outputs/apk/debug/app-debug.apk`
 
+CI builds the artifact with `-PstasiAbiArm64Only` ( **`arm64-v8a` only** ) so the downloadable APK stays small; omit that flag locally if you need x86 emulators or universal ABIs.
+
 Run lint and unit tests:
 
 ```bash
 ./gradlew lintDebug testDebugUnitTest
 ```
 
-Release builds require signing (see below):
+Release builds require signing (see below). Release APKs/AABs use **R8 minification**, **resource shrinking**, and **phone ABIs only** (`arm64-v8a`, `armeabi-v7a`—no x86 emulator libs).
 
 ```bash
 ./gradlew assembleRelease bundleRelease
@@ -91,7 +95,7 @@ If `keystore.properties` is missing, Gradle still configures the **debug** build
 
 On every push (any branch) and on **workflow_dispatch**:
 
-- Lint, unit tests, and a **debug APK** artifact (**`stasi-debug-apk`**)—built in a dedicated job so you still get an APK when lint/tests fail but the project compiles.
+- Lint, unit tests, and a **debug APK** artifact (**`stasi-debug-apk`**)—built in a dedicated job so you still get an APK when lint/tests fail but the project compiles. The artifact is **arm64-v8a-only** (smaller download; MapLibre ships large native libs per ABI).
 
 Download: **Actions → latest “Android CI” run → Artifacts → `stasi-debug-apk`**.
 
@@ -126,7 +130,7 @@ Play Console app must use package **`io.github.ntufar.stasi`** (or change `appli
 ## Data & privacy
 
 - Network data comes from **OASA Telematics** (`http://telematics.oasa.gr/api/`). The app uses **cleartext HTTP** for that endpoint (see manifest / network security configuration).
-- **Location** is used for nearby stops only; the MVP spec does not persist location history.
+- **Location** is used for nearby stops and for **your position on the route map** when you allow it; the MVP spec does not persist location history.
 - **No analytics / crash reporting** in the MVP spec—verify current code before claiming compliance in store listings.
 
 ---
