@@ -1,10 +1,15 @@
 package io.github.ntufar.stasi.ui.map
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.os.Looper
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,11 +19,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -41,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
@@ -52,6 +61,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.data.repository.BusOnRoute
 import io.github.ntufar.stasi.data.repository.RouteStop
 import io.github.ntufar.stasi.di.LocalAppContainer
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import kotlin.math.atan2
@@ -90,6 +104,14 @@ private const val PROP_SEQ = "seq"
 private const val PROP_KIND = "kind"
 private const val PROP_BEARING = "bearing"
 private const val BUS_ICON_ID = "bus-heading-icon"
+private const val USER_LOCATION_SOURCE_ID = "user-location-source"
+private const val USER_LOCATION_LAYER_ID = "user-location-dot"
+
+private fun hasAnyLocationPermission(context: android.content.Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
 
 private val STOP_KINDS = listOf(
     Triple("start", Color.rgb(76, 175, 80), 11f),
@@ -116,6 +138,56 @@ fun MapScreen(
         },
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var userLatLng by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var recenterSignal by remember { mutableIntStateOf(0) }
+    val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val locationAllowed = hasAnyLocationPermission(context)
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { granted ->
+        if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
+            try {
+                fused.lastLocation.addOnSuccessListener { loc ->
+                    loc?.let { userLatLng = it.latitude to it.longitude }
+                }
+            } catch (_: SecurityException) {
+                // ignore
+            }
+            recenterSignal++
+        }
+    }
+
+    DisposableEffect(locationAllowed, fused) {
+        if (!hasAnyLocationPermission(context)) {
+            userLatLng = null
+            return@DisposableEffect onDispose { }
+        }
+        val callback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let { loc ->
+                    userLatLng = loc.latitude to loc.longitude
+                }
+            }
+        }
+        val request = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L)
+            .setMinUpdateIntervalMillis(5_000L)
+            .build()
+        try {
+            fused.lastLocation.addOnSuccessListener { loc ->
+                loc?.let { userLatLng = it.latitude to it.longitude }
+            }
+            fused.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        } catch (_: SecurityException) {
+            userLatLng = null
+        }
+        onDispose {
+            fused.removeLocationUpdates(callback)
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(vm, lifecycleOwner) {
@@ -202,10 +274,31 @@ fun MapScreen(
                 StasiMapLibre(
                     stops = uiState.stops,
                     buses = uiState.buses,
+                    userLatLng = userLatLng,
+                    recenterSignal = recenterSignal,
                     onBusVehicleSelected = vm::selectVehicle,
                     onStopSelected = onStopSelected,
                     modifier = Modifier.fillMaxSize(),
                 )
+                FloatingActionButton(
+                    onClick = {
+                        if (!hasAnyLocationPermission(context)) {
+                            permissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ),
+                            )
+                        } else {
+                            recenterSignal++
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp),
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = "Τρέχουσα τοποθεσία")
+                }
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier
@@ -250,6 +343,8 @@ fun MapScreen(
 private fun StasiMapLibre(
     stops: List<RouteStop>,
     buses: List<BusOnRoute>,
+    userLatLng: Pair<Double, Double>?,
+    recenterSignal: Int,
     onBusVehicleSelected: (String) -> Unit,
     onStopSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -284,6 +379,10 @@ private fun StasiMapLibre(
     var styleLoaded by remember { mutableStateOf(false) }
     val onBusSelected by rememberUpdatedState(onBusVehicleSelected)
     val onStopClicked by rememberUpdatedState(onStopSelected)
+    val styleLoadedState = rememberUpdatedState(styleLoaded)
+    val mapRefState = rememberUpdatedState(mapRef)
+    val userLatLngState = rememberUpdatedState(userLatLng)
+    val stopsState = rememberUpdatedState(stops)
 
     DisposableEffect(mapView) {
         mapView.getMapAsync { map ->
@@ -294,6 +393,7 @@ private fun StasiMapLibre(
                 val iconSizePx = (context.resources.displayMetrics.density * 28f).toInt().coerceIn(24, 72)
                 style.addImage(BUS_ICON_ID, createBusArrowBitmap(iconSizePx))
                 ensureBusLayers(style)
+                ensureUserLocationLayer(style)
                 map.addOnMapClickListener { latLng ->
                     val screenPoint = map.projection.toScreenLocation(latLng)
                     val busFeat = map.queryRenderedFeatures(screenPoint, BUSES_LAYER_ID)
@@ -332,6 +432,39 @@ private fun StasiMapLibre(
         routeSource?.setGeoJson(routeFeatureCollection(stops))
         stopsSource?.setGeoJson(stopsFeatureCollection(stops))
         busSource?.setGeoJson(busFeatureCollection(buses, stops))
+    }
+
+    LaunchedEffect(styleLoaded, userLatLng) {
+        if (!styleLoaded) return@LaunchedEffect
+        val style = styleRef ?: return@LaunchedEffect
+        val userSource = style.getSourceAs<GeoJsonSource>(USER_LOCATION_SOURCE_ID) ?: return@LaunchedEffect
+        if (userLatLng == null) {
+            userSource.setGeoJson(FeatureCollection.fromFeatures(emptyArray()))
+        } else {
+            userSource.setGeoJson(userLocationFeatureCollection(userLatLng.first, userLatLng.second))
+        }
+    }
+
+    LaunchedEffect(recenterSignal) {
+        if (recenterSignal == 0) return@LaunchedEffect
+        if (!styleLoadedState.value) return@LaunchedEffect
+        val map = mapRefState.value ?: return@LaunchedEffect
+        val ul = userLatLngState.value ?: return@LaunchedEffect
+        val sorted = stopsState.value.sortedBy { it.order }
+        val padding = 80
+        val userPoint = LatLng(ul.first, ul.second)
+        if (sorted.isNotEmpty()) {
+            val builder = LatLngBounds.Builder()
+            sorted.forEach { builder.include(LatLng(it.lat, it.lng)) }
+            builder.include(userPoint)
+            try {
+                map.easeCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), padding), 500)
+            } catch (_: Exception) {
+                map.easeCamera(CameraUpdateFactory.newLatLngZoom(userPoint, 14.0), 400)
+            }
+        } else {
+            map.easeCamera(CameraUpdateFactory.newLatLngZoom(userPoint, 14.0), 400)
+        }
     }
 
     LaunchedEffect(styleLoaded, stops) {
@@ -428,6 +561,35 @@ private fun ensureBusLayers(style: Style) {
             ),
         )
     }
+}
+
+private fun ensureUserLocationLayer(style: Style) {
+    if (style.getSourceAs<GeoJsonSource>(USER_LOCATION_SOURCE_ID) == null) {
+        style.addSource(
+            GeoJsonSource(
+                USER_LOCATION_SOURCE_ID,
+                FeatureCollection.fromFeatures(emptyArray()),
+            ),
+        )
+    }
+    if (style.getLayer(USER_LOCATION_LAYER_ID) == null) {
+        val dot = CircleLayer(USER_LOCATION_LAYER_ID, USER_LOCATION_SOURCE_ID).withProperties(
+            PropertyFactory.circleRadius(9f),
+            PropertyFactory.circleColor(Color.rgb(66, 133, 244)),
+            PropertyFactory.circleStrokeColor(Color.WHITE),
+            PropertyFactory.circleStrokeWidth(3f),
+        )
+        if (style.getLayer(BUSES_LAYER_ID) != null) {
+            style.addLayerAbove(dot, BUSES_LAYER_ID)
+        } else {
+            style.addLayer(dot)
+        }
+    }
+}
+
+private fun userLocationFeatureCollection(lat: Double, lng: Double): FeatureCollection {
+    val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
+    return FeatureCollection.fromFeatures(arrayOf(feature))
 }
 
 private fun routeFeatureCollection(stops: List<RouteStop>): FeatureCollection {
