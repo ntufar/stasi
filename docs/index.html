@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<!-- GitHub Pages: Repo → Settings → Pages → Source: Deploy from branch → main → /docs -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stasi — Athens bus arrivals, fast &amp; private</title>
+  <meta name="description" content="Open-source Android app for Athens public transport: live arrivals, nearby stops, route maps. No ads or accounts.">
+  <meta property="og:title" content="Stasi — Athens bus app">
+  <meta property="og:description" content="Fast, private Android app for Athens buses and transit.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07080c;
+      --surface: #11131a;
+      --border: #1e2230;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #3dd6c6;
+      --accent-dim: rgba(61, 214, 198, 0.12);
+      --radius: 14px;
+      --max: 880px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-optical-sizing: auto;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .noise {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .glow {
+      position: fixed;
+      width: 560px;
+      height: 560px;
+      top: -180px;
+      right: -120px;
+      background: radial-gradient(circle, rgba(61, 214, 198, 0.22) 0%, transparent 68%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header,
+    main,
+    footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      padding: 2.25rem 1.25rem 3rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(17, 19, 26, 0.95) 0%, transparent 100%);
+    }
+
+    .wrap {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 0.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid rgba(61, 214, 198, 0.35);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin: 0 0 1rem;
+    }
+
+    .lead {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 38em;
+      margin: 0 0 1.75rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    a.btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.15rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    a.btn:active {
+      transform: scale(0.98);
+    }
+
+    a.btn-primary {
+      background: var(--accent);
+      color: #041312;
+    }
+
+    a.btn-primary:hover {
+      filter: brightness(1.06);
+    }
+
+    a.btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    a.btn-secondary:hover {
+      border-color: rgba(61, 214, 198, 0.45);
+    }
+
+    main {
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    section {
+      margin-bottom: 3rem;
+    }
+
+    section:last-of-type {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 1rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.35rem;
+    }
+
+    .card h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--muted);
+    }
+
+    .list li {
+      margin-bottom: 0.5rem;
+    }
+
+    .list li:last-child {
+      margin-bottom: 0;
+    }
+
+    .spec-link {
+      margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .spec-link a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(61, 214, 198, 0.35);
+    }
+
+    .spec-link a:hover {
+      border-bottom-color: var(--accent);
+    }
+
+    footer {
+      padding: 2rem 1.25rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      a.btn:active {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="glow" aria-hidden="true"></div>
+
+  <header>
+    <div class="wrap">
+      <div class="badge">Open source · Athens transit</div>
+      <h1>See your bus in under a second.</h1>
+      <p class="lead">
+        <strong>Stasi</strong> is a fast, private Android app for Athens public transport—live arrivals,
+        nearby stops, and route maps without ads, accounts, or clutter. Greek-first UI with English fallback.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://github.com/ntufar/stasi">View on GitHub</a>
+        <a class="btn btn-secondary" href="https://github.com/ntufar/stasi/blob/master/doc/SPEC.md">Read the spec</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section aria-labelledby="features-heading">
+        <h2 id="features-heading">Built for daily riders</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Live arrivals</h3>
+            <p>Favorite stops on the home screen with the next arrivals at a glance—big minutes, line ID, destination.</p>
+          </article>
+          <article class="card">
+            <h3>Search that understands Greek</h3>
+            <p>Find stops and lines by name with fuzzy matching that ignores accents—try “syntagma” for ΣΥΝΤΑΓΜΑ.</p>
+          </article>
+          <article class="card">
+            <h3>Nearby &amp; maps</h3>
+            <p>GPS-sorted nearby stops and route maps with MapLibre—open maps, no proprietary keys.</p>
+          </article>
+          <article class="card">
+            <h3>Offline-friendly cache</h3>
+            <p>Lines and stops cached for hours; arrivals cached briefly so you are not stuck without signal.</p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="stack-heading">
+        <h2 id="stack-heading">Tech stack</h2>
+        <div class="card">
+          <ul class="list">
+            <li>Kotlin, Jetpack Compose, Material 3 · MVVM &amp; repository pattern</li>
+            <li>Retrofit, Room, DataStore · MapLibre SDK</li>
+            <li>Data from OASA Telematics API (POST endpoints); aggressive caching and rate limits respected</li>
+          </ul>
+          <p class="spec-link">
+            Details and acceptance criteria are in the
+            <a href="https://github.com/ntufar/stasi/blob/master/doc/SPEC.md">project specification</a>.
+          </p>
+        </div>
+      </section>
+
+      <section aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading">Privacy</h2>
+        <div class="card">
+          <p style="margin:0;color:var(--muted);font-size:0.95rem;">
+            No analytics or crash reporting in the MVP. Location is used for nearby stops only and not stored.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>
+        © Stasi contributors ·
+        <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

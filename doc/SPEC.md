@@ -58,7 +58,7 @@ data class Arrival(val lineCode: String, val destination: String, val minutes: I
 ```
 
 ## 8. App Structure
-com.example.stasi/
+io.github.ntufar.stasi/
 - data/
   - api/OasaApi.kt
   - local/AppDatabase.kt, StopDao.kt

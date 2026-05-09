@@ -11,3 +11,7 @@
 *.apk
 *.ap_
 *.aab
+keystore.properties
+*.jks
+*.keystore
+play-service-account.json
