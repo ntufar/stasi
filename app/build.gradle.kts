@@ -12,6 +12,9 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
+/** CI debug artifact: single arm64 APK (~4× smaller native libs than universal). Local builds omit this flag. */
+val stasiAbiArm64Only = project.hasProperty("stasiAbiArm64Only")
+
 android {
     namespace = "io.github.ntufar.stasi"
     compileSdk = 34
@@ -23,6 +26,11 @@ android {
         versionCode = 1
         versionName = "0.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        if (stasiAbiArm64Only) {
+            ndk {
+                abiFilters += listOf("arm64-v8a")
+            }
+        }
     }
 
     signingConfigs {
@@ -39,7 +47,12 @@ android {
     buildTypes {
         release {
             signingConfigs.findByName("release")?.let { signingConfig = it }
-            isMinifyEnabled = false
+            // Phones only — drops x86/x86_64 emulator libs (~half the native weight vs universal).
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

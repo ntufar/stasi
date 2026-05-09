@@ -1,6 +1,10 @@
 # Builds a signed Android App Bundle for Play Console and, on tag push (v*),
 # creates a GitHub Release with the release APK attached (notes from CHANGELOG.md).
 #
+# Release APK is arm64-v8a + armeabi-v7a only (no x86 emulator libs), minified + shrunk resources.
+# Play installs use the AAB; Google serves device-specific splits, so download size is typically
+# smaller than the standalone universal APK artifact.
+#
 # Required repo secrets for a signed bundle:
 #   RELEASE_KEYSTORE_BASE64 — base64 of your upload keystore file
 #   KEYSTORE_STORE_PASSWORD
