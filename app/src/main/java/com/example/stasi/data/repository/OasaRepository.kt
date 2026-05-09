@@ -413,6 +413,17 @@ class OasaRepository(
         }
     }
 
+    /**
+     * First route code for [lineCodeOrId] (matches [StasiDao.linesByExactCodeOrId]), for map / webGetStops.
+     * Uses Room routes when present, otherwise [webGetRoutes].
+     */
+    suspend fun primaryRouteCodeForLine(lineCodeOrId: String): String? {
+        val trimmed = lineCodeOrId.trim()
+        if (trimmed.isEmpty()) return null
+        resolveLineToRouteCodeFromCache(trimmed)?.let { return it }
+        return resolveLineToRouteCode(trimmed)
+    }
+
     private suspend fun resolveLineToRouteCodeFromCache(userInput: String): String? {
         val line = dao.linesByExactCodeOrId(userInput).firstOrNull() ?: return null
         return dao.routesForLine(line.lineCode).firstOrNull()?.routeCode

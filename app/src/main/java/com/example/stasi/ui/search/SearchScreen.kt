@@ -1,9 +1,13 @@
 package com.example.stasi.ui.search
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -22,7 +26,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -35,8 +41,10 @@ import com.example.stasi.di.LocalAppContainer
 fun SearchScreen(
     onBack: () -> Unit,
     onStopSelected: (stopCode: String) -> Unit,
+    onOpenLineOnMap: (routeCode: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val vm: SearchViewModel = viewModel(
         factory = remember(container) {
             object : ViewModelProvider.Factory {
@@ -110,13 +118,43 @@ fun SearchScreen(
                 Text("Γραμμές", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
             }
             items(ui.lines, key = { it.lineCode }) { line ->
-                Text(
-                    "${line.lineId} · ${line.descr}",
+                val openingLine = ui.lineOpenInProgressForCode != null
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { }
+                        .clickable(
+                            enabled = !openingLine,
+                            onClick = {
+                                vm.openLineOnMap(line.lineCode) { route ->
+                                    if (route != null) {
+                                        onOpenLineOnMap(route)
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Δεν ήταν δυνατή η φόρτωση της διαδρομής. Ελέγξτε το δίκτυο.",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                }
+                            },
+                        )
                         .padding(vertical = 8.dp),
-                )
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "${line.lineId} · ${line.descr}",
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (ui.lineOpenInProgressForCode == line.lineCode) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
             }
             item {
                 Text("Στάσεις", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))

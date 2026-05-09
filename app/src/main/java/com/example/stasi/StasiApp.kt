@@ -32,6 +32,11 @@ fun StasiApp() {
                         launchSingleTop = true
                     }
                 },
+                onOpenLineOnMap = { routeCode ->
+                    navController.navigate("map/$routeCode") {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
         composable(
