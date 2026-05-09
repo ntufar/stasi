@@ -1,5 +1,6 @@
 package io.github.ntufar.stasi.ui.arrivals
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -96,6 +97,9 @@ fun ArrivalsScreen(
                     Column(
                         Modifier
                             .fillMaxWidth()
+                            .clickable(enabled = a.routeCode.isNotBlank()) {
+                                onOpenMap(a.routeCode)
+                            }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                     ) {
                         Text(

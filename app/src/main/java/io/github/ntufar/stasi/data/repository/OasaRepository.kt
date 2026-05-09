@@ -486,10 +486,21 @@ class OasaRepository(
         val dest = j.routeDescr?.trim().orEmpty().ifBlank { routeRow?.descr ?: route }
         val lineCodeValue = j.lineCode?.trim().orEmpty().ifBlank { routeRow?.lineCode.orEmpty() }
         val lineRow = if (lineCodeValue.isNotBlank()) dao.lineByCode(lineCodeValue) else null
+        val lineCodeFromRoute = routeRow?.lineCode?.trim().orEmpty()
         val lineLabel = when {
-            lineRow != null -> "${lineRow.lineId.ifBlank { lineRow.lineCode }} · ${lineRow.descr}"
+            lineRow != null -> {
+                val num = lineRow.lineCode.ifBlank { lineRow.lineId }
+                val name = lineRow.descr.trim()
+                when {
+                    num.isNotBlank() && name.isNotBlank() -> "$num · $name"
+                    num.isNotBlank() -> num
+                    name.isNotBlank() -> name
+                    else -> route
+                }
+            }
             lineCodeValue.isNotBlank() -> lineCodeValue
-            else -> veh
+            lineCodeFromRoute.isNotBlank() -> lineCodeFromRoute
+            else -> route
         }
         return ArrivalCacheEntity(
             stopCode = stopCode,
