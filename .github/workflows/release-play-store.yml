@@ -1,4 +1,5 @@
-# Builds a signed Android App Bundle for Play Console.
+# Builds a signed Android App Bundle for Play Console and, on tag push (v*),
+# creates a GitHub Release with the release APK attached (notes from CHANGELOG.md).
 #
 # Required repo secrets for a signed bundle:
 #   RELEASE_KEYSTORE_BASE64 — base64 of your upload keystore file
@@ -37,7 +38,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -105,6 +106,31 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: Prepare GitHub Release (notes + named APK)
+        id: github_release
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+          BEGIN { hdr = "^## \\[" ver "\\]" }
+          $0 ~ hdr { p=1; next }
+          p && $0 ~ /^## \[/ { exit }
+          p { print }
+          ' CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            printf 'No changelog section for `%s`. See CHANGELOG.md on this tag.\n' "$VERSION" > release_notes.md
+          fi
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          cp "$APK" "${{ github.workspace }}/stasi-${VERSION}.apk"
+          echo "apk=stasi-${VERSION}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release with APK
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.github_release.outputs.apk }}
+          body_path: release_notes.md
 
       - name: Upload to Google Play
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true'
