@@ -1,6 +1,7 @@
 package com.example.stasi.ui.home
 
 import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -33,12 +34,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stasi.di.LocalAppContainer
 import com.google.android.gms.location.LocationServices
+
+private fun hasAnyLocationPermission(context: android.content.Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,9 +75,15 @@ fun HomeScreen(
         if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
-            fused.lastLocation.addOnSuccessListener { loc ->
-                if (loc != null) {
-                    vm.refreshNearby(loc.latitude, loc.longitude)
+            if (hasAnyLocationPermission(context)) {
+                try {
+                    fused.lastLocation.addOnSuccessListener { loc ->
+                        if (loc != null) {
+                            vm.refreshNearby(loc.latitude, loc.longitude)
+                        }
+                    }
+                } catch (_: SecurityException) {
+                    // Revoked between grant callback and call; ignore.
                 }
             }
         }
