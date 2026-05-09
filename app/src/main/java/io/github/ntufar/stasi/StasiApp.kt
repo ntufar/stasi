@@ -60,6 +60,11 @@ fun StasiApp() {
             MapScreen(
                 presetRouteCode = null,
                 onBack = { navController.popBackStack() },
+                onStopSelected = { stopCode ->
+                    navController.navigate("arrivals/$stopCode") {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
         composable(
@@ -72,6 +77,11 @@ fun StasiApp() {
             MapScreen(
                 presetRouteCode = routeCode.ifBlank { null },
                 onBack = { navController.popBackStack() },
+                onStopSelected = { stopCode ->
+                    navController.navigate("arrivals/$stopCode") {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
     }

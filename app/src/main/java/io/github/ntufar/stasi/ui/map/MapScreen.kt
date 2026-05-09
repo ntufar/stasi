@@ -1,5 +1,10 @@
 package io.github.ntufar.stasi.ui.map
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +49,10 @@ import io.github.ntufar.stasi.data.repository.RouteStop
 import io.github.ntufar.stasi.di.LocalAppContainer
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -54,6 +63,7 @@ import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -64,15 +74,30 @@ import org.maplibre.geojson.Point
 private const val STYLE_URI = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 private const val ROUTE_SOURCE_ID = "route-source"
 private const val ROUTE_LINE_LAYER_ID = "route-line"
+private const val STOPS_SOURCE_ID = "stops-source"
+private const val STOPS_CIRCLE_PREFIX = "stops-circle-"
+private const val STOPS_LABEL_LAYER_ID = "stops-labels"
 private const val BUSES_SOURCE_ID = "buses-source"
 private const val BUSES_LAYER_ID = "buses-layer"
 private const val PROP_VEH = "vehicleNo"
+private const val PROP_STOP_CODE = "stopCode"
+private const val PROP_SEQ = "seq"
+private const val PROP_KIND = "kind"
+private const val PROP_BEARING = "bearing"
+private const val BUS_ICON_ID = "bus-heading-icon"
+
+private val STOP_KINDS = listOf(
+    Triple("start", Color.rgb(76, 175, 80), 11f),
+    Triple("mid", Color.rgb(0, 172, 193), 9f),
+    Triple("end", Color.rgb(244, 67, 54), 11f),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     presetRouteCode: String?,
     onBack: (() -> Unit)?,
+    onStopSelected: (stopCode: String) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     val vm: MapViewModel = viewModel(
@@ -144,6 +169,7 @@ fun MapScreen(
                 stops = uiState.stops,
                 buses = uiState.buses,
                 onBusVehicleSelected = vm::selectVehicle,
+                onStopSelected = onStopSelected,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -170,6 +196,7 @@ private fun StasiMapLibre(
     stops: List<RouteStop>,
     buses: List<BusOnRoute>,
     onBusVehicleSelected: (String) -> Unit,
+    onStopSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -201,23 +228,34 @@ private fun StasiMapLibre(
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
     val onBusSelected by rememberUpdatedState(onBusVehicleSelected)
+    val onStopClicked by rememberUpdatedState(onStopSelected)
 
     DisposableEffect(mapView) {
         mapView.getMapAsync { map ->
             mapRef = map
             map.setStyle(Style.Builder().fromUri(STYLE_URI)) { style ->
                 ensureRouteLayers(style)
+                ensureStopLayers(style)
+                val iconSizePx = (context.resources.displayMetrics.density * 40f).toInt().coerceIn(32, 96)
+                style.addImage(BUS_ICON_ID, createBusArrowBitmap(iconSizePx))
                 ensureBusLayers(style)
                 map.addOnMapClickListener { latLng ->
                     val screenPoint = map.projection.toScreenLocation(latLng)
-                    val features = map.queryRenderedFeatures(screenPoint, BUSES_LAYER_ID)
-                    val veh = features.firstOrNull()?.getStringProperty(PROP_VEH)
+                    val busFeat = map.queryRenderedFeatures(screenPoint, BUSES_LAYER_ID)
+                    val veh = busFeat.firstOrNull()?.getStringProperty(PROP_VEH)
                     if (veh != null) {
                         onBusSelected(veh)
-                        true
-                    } else {
-                        false
+                        return@addOnMapClickListener true
                     }
+                    val stopLayerIds = STOP_KINDS.map { (k, _, _) -> "$STOPS_CIRCLE_PREFIX$k" } + STOPS_LABEL_LAYER_ID
+                    val stopFeat = map.queryRenderedFeatures(screenPoint, *stopLayerIds.toTypedArray())
+                        .firstOrNull()
+                    val code = stopFeat?.getStringProperty(PROP_STOP_CODE)
+                    if (!code.isNullOrBlank()) {
+                        onStopClicked(code)
+                        return@addOnMapClickListener true
+                    }
+                    false
                 }
                 styleRef = style
                 styleLoaded = true
@@ -234,9 +272,11 @@ private fun StasiMapLibre(
         if (!styleLoaded) return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         val routeSource = style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)
+        val stopsSource = style.getSourceAs<GeoJsonSource>(STOPS_SOURCE_ID)
         val busSource = style.getSourceAs<GeoJsonSource>(BUSES_SOURCE_ID)
         routeSource?.setGeoJson(routeFeatureCollection(stops))
-        busSource?.setGeoJson(busFeatureCollection(buses))
+        stopsSource?.setGeoJson(stopsFeatureCollection(stops))
+        busSource?.setGeoJson(busFeatureCollection(buses, stops))
     }
 
     LaunchedEffect(styleLoaded, stops) {
@@ -264,10 +304,49 @@ private fun ensureRouteLayers(style: Style) {
     if (style.getLayer(ROUTE_LINE_LAYER_ID) == null) {
         style.addLayer(
             LineLayer(ROUTE_LINE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
-                PropertyFactory.lineColor(android.graphics.Color.rgb(76, 175, 80)),
+                PropertyFactory.lineColor(Color.rgb(76, 175, 80)),
                 PropertyFactory.lineWidth(5f),
                 PropertyFactory.lineCap(Expression.literal("round")),
                 PropertyFactory.lineJoin(Expression.literal("round")),
+            ),
+        )
+    }
+}
+
+private fun ensureStopLayers(style: Style) {
+    if (style.getSourceAs<GeoJsonSource>(STOPS_SOURCE_ID) == null) {
+        style.addSource(
+            GeoJsonSource(
+                STOPS_SOURCE_ID,
+                FeatureCollection.fromFeatures(emptyArray()),
+            ),
+        )
+    }
+    for ((kind, color, radius) in STOP_KINDS) {
+        val layerId = "$STOPS_CIRCLE_PREFIX$kind"
+        if (style.getLayer(layerId) == null) {
+            style.addLayer(
+                CircleLayer(layerId, STOPS_SOURCE_ID).withProperties(
+                    PropertyFactory.circleRadius(radius),
+                    PropertyFactory.circleColor(color),
+                    PropertyFactory.circleStrokeColor(Color.WHITE),
+                    PropertyFactory.circleStrokeWidth(2f),
+                ).withFilter(
+                    Expression.eq(Expression.get(PROP_KIND), Expression.literal(kind)),
+                ),
+            )
+        }
+    }
+    if (style.getLayer(STOPS_LABEL_LAYER_ID) == null) {
+        style.addLayer(
+            SymbolLayer(STOPS_LABEL_LAYER_ID, STOPS_SOURCE_ID).withProperties(
+                PropertyFactory.textField(Expression.get(PROP_SEQ)),
+                PropertyFactory.textSize(12f),
+                PropertyFactory.textColor(Color.WHITE),
+                PropertyFactory.textHaloColor(Color.BLACK),
+                PropertyFactory.textHaloWidth(2f),
+                PropertyFactory.textAllowOverlap(true),
+                PropertyFactory.textIgnorePlacement(true),
             ),
         )
     }
@@ -284,15 +363,13 @@ private fun ensureBusLayers(style: Style) {
     }
     if (style.getLayer(BUSES_LAYER_ID) == null) {
         style.addLayer(
-            CircleLayer(BUSES_LAYER_ID, BUSES_SOURCE_ID).withProperties(
-                PropertyFactory.circleRadius(8f),
-                PropertyFactory.circleColor(
-                    android.graphics.Color.rgb(255, 193, 7),
-                ),
-                PropertyFactory.circleStrokeColor(
-                    android.graphics.Color.rgb(27, 27, 27),
-                ),
-                PropertyFactory.circleStrokeWidth(2f),
+            SymbolLayer(BUSES_LAYER_ID, BUSES_SOURCE_ID).withProperties(
+                PropertyFactory.iconImage(BUS_ICON_ID),
+                PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconRotationAlignment(Expression.literal("map")),
+                PropertyFactory.iconRotate(Expression.toNumber(Expression.get(PROP_BEARING))),
             ),
         )
     }
@@ -302,26 +379,122 @@ private fun routeFeatureCollection(stops: List<RouteStop>): FeatureCollection {
     if (stops.size < 2) {
         return FeatureCollection.fromFeatures(emptyArray())
     }
-    val points = stops.map { Point.fromLngLat(it.lng, it.lat) }
+    val sorted = stops.sortedBy { it.order }
+    val points = sorted.map { Point.fromLngLat(it.lng, it.lat) }
     val line = LineString.fromLngLats(points)
     return FeatureCollection.fromFeature(Feature.fromGeometry(line))
 }
 
-private fun busFeatureCollection(buses: List<BusOnRoute>): FeatureCollection {
+private fun stopsFeatureCollection(stops: List<RouteStop>): FeatureCollection {
+    if (stops.isEmpty()) return FeatureCollection.fromFeatures(emptyArray())
+    val sorted = stops.sortedBy { it.order }
+    val last = sorted.lastIndex
+    val features = sorted.mapIndexed { index, s ->
+        val kind = when (index) {
+            0 -> "start"
+            last -> "end"
+            else -> "mid"
+        }
+        val props = JsonObject()
+        props.add(PROP_STOP_CODE, JsonPrimitive(s.stopCode))
+        props.add(PROP_SEQ, JsonPrimitive((index + 1).toString()))
+        props.add(PROP_KIND, JsonPrimitive(kind))
+        Feature.fromGeometry(Point.fromLngLat(s.lng, s.lat), props)
+    }
+    return FeatureCollection.fromFeatures(features.toTypedArray())
+}
+
+private fun busFeatureCollection(buses: List<BusOnRoute>, stops: List<RouteStop>): FeatureCollection {
     if (buses.isEmpty()) {
         return FeatureCollection.fromFeatures(emptyArray())
     }
     val features = buses.map { bus ->
+        val bearing = computeBusHeading(bus, stops)
         val props = JsonObject()
         props.add(PROP_VEH, JsonPrimitive(bus.vehicleNo))
+        props.add(PROP_BEARING, JsonPrimitive(bearing))
         Feature.fromGeometry(Point.fromLngLat(bus.lng, bus.lat), props)
     }
     return FeatureCollection.fromFeatures(features.toTypedArray())
 }
 
+private fun computeBusHeading(bus: BusOnRoute, stops: List<RouteStop>): Double {
+    val sorted = stops.sortedBy { it.order }
+    if (sorted.size < 2) return 0.0
+    var closest = 0
+    var best = Double.MAX_VALUE
+    sorted.forEachIndexed { i, s ->
+        val d = haversineMeters(bus.lat, bus.lng, s.lat, s.lng)
+        if (d < best) {
+            best = d
+            closest = i
+        }
+    }
+    return when {
+        closest < sorted.lastIndex ->
+            bearingDegrees(bus.lat, bus.lng, sorted[closest + 1].lat, sorted[closest + 1].lng)
+        else ->
+            bearingDegrees(
+                sorted[closest - 1].lat,
+                sorted[closest - 1].lng,
+                sorted[closest].lat,
+                sorted[closest].lng,
+            )
+    }
+}
+
+private fun haversineMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+    val r = 6371000.0
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLng = Math.toRadians(lng2 - lng1)
+    val a =
+        sin(dLat / 2) * sin(dLat / 2) +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+            sin(dLng / 2) * sin(dLng / 2)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return r * c
+}
+
+private fun bearingDegrees(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+    val φ1 = Math.toRadians(lat1)
+    val φ2 = Math.toRadians(lat2)
+    val Δλ = Math.toRadians(lng2 - lng1)
+    val y = sin(Δλ) * cos(φ2)
+    val x = cos(φ1) * sin(φ2) - sin(φ1) * cos(φ2) * cos(Δλ)
+    val θ = atan2(y, x)
+    return (Math.toDegrees(θ) + 360.0) % 360.0
+}
+
+private fun createBusArrowBitmap(sizePx: Int): Bitmap {
+    val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.rgb(255, 193, 7)
+    }
+    val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = sizePx * 0.06f
+        color = Color.rgb(27, 27, 27)
+    }
+    val path = Path().apply {
+        val tip = sizePx * 0.12f
+        val base = sizePx * 0.88f
+        moveTo(sizePx / 2f, tip)
+        lineTo(sizePx * 0.88f, base)
+        lineTo(sizePx * 0.12f, base)
+        close()
+    }
+    canvas.drawPath(path, fill)
+    canvas.drawPath(path, stroke)
+    return bmp
+}
+
 private fun fitCameraToRoute(map: MapLibreMap, stops: List<RouteStop>) {
+    val sorted = stops.sortedBy { it.order }
+    if (sorted.isEmpty()) return
     val builder = LatLngBounds.Builder()
-    stops.forEach { builder.include(LatLng(it.lat, it.lng)) }
+    sorted.forEach { builder.include(LatLng(it.lat, it.lng)) }
     val bounds = builder.build()
     try {
         map.easeCamera(
@@ -329,7 +502,7 @@ private fun fitCameraToRoute(map: MapLibreMap, stops: List<RouteStop>) {
             600,
         )
     } catch (_: Exception) {
-        val center = stops[stops.size / 2]
+        val center = sorted[sorted.size / 2]
         map.easeCamera(
             CameraUpdateFactory.newLatLngZoom(LatLng(center.lat, center.lng), 12.0),
             400,

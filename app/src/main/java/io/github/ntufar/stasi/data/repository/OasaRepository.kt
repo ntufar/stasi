@@ -4,6 +4,7 @@ import io.github.ntufar.stasi.data.api.OasaApi
 import io.github.ntufar.stasi.data.api.OasaArrivalJson
 import io.github.ntufar.stasi.data.api.OasaClosestStopJson
 import io.github.ntufar.stasi.data.api.OasaStopXYJson
+import io.github.ntufar.stasi.data.api.OasaWebRouteForStopJson
 import io.github.ntufar.stasi.data.api.OasaWebStopJson
 import io.github.ntufar.stasi.data.api.createOasaApi
 import io.github.ntufar.stasi.data.local.ArrivalCacheEntity
@@ -282,10 +283,17 @@ class OasaRepository(
 
     private suspend fun fetchAndCacheArrivals(stopCode: String, now: Long): List<ArrivalDetail> {
         return try {
+            val routesAtStop = try {
+                limiter.run(EndpointRateLimiter.EP_WEB_ROUTES_FOR_STOP) {
+                    api.webRoutesForStop(stopCode = stopCode)
+                }.routeMetaByRouteCode()
+            } catch (_: Exception) {
+                emptyMap()
+            }
             val json = limiter.run(EndpointRateLimiter.EP_GET_ARRIVALS) {
                 api.getStopArrivals(stopCode = stopCode)
             }
-            val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now) }
+            val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now, routesAtStop) }
             dao.replaceArrivals(stopCode, rows)
             rows.map { it.toDetail() }
         } catch (_: Exception) {
@@ -478,19 +486,40 @@ class OasaRepository(
         lineLabel = lineLabel,
     )
 
-    private suspend fun mapArrivalJson(j: OasaArrivalJson, stopCode: String, now: Long): ArrivalCacheEntity? {
+    private suspend fun mapArrivalJson(
+        j: OasaArrivalJson,
+        stopCode: String,
+        now: Long,
+        routesAtStop: Map<String, RouteAtStopMeta>,
+    ): ArrivalCacheEntity? {
         val route = j.routeCode?.trim().orEmpty().ifBlank { return null }
         val veh = j.vehCode?.trim().orEmpty().ifBlank { "?" }
         val mins = parseArrivalMinutes(j.btime2)
+        val meta = routesAtStop[route]
         val routeRow = dao.routeByCode(route)
-        val dest = j.routeDescr?.trim().orEmpty().ifBlank { routeRow?.descr ?: route }
-        val lineCodeValue = j.lineCode?.trim().orEmpty().ifBlank { routeRow?.lineCode.orEmpty() }
+        val dest = j.routeDescr?.trim().orEmpty()
+            .ifBlank { routeRow?.descr.orEmpty() }
+            .ifBlank { meta?.routeDescr.orEmpty() }
+            .ifBlank { route }
+        val lineCodeValue = j.lineCode?.trim().orEmpty()
+            .ifBlank { routeRow?.lineCode.orEmpty() }
+            .ifBlank { meta?.lineCode.orEmpty() }
         val lineRow = if (lineCodeValue.isNotBlank()) dao.lineByCode(lineCodeValue) else null
         val lineCodeFromRoute = routeRow?.lineCode?.trim().orEmpty()
         val lineLabel = when {
             lineRow != null -> {
-                val num = lineRow.lineCode.ifBlank { lineRow.lineId }
+                val num = lineRow.lineId.ifBlank { lineRow.lineCode }
                 val name = lineRow.descr.trim()
+                when {
+                    num.isNotBlank() && name.isNotBlank() -> "$num · $name"
+                    num.isNotBlank() -> num
+                    name.isNotBlank() -> name
+                    else -> route
+                }
+            }
+            meta != null -> {
+                val num = meta.lineId.ifBlank { meta.lineCode }
+                val name = meta.lineDescr.trim()
                 when {
                     num.isNotBlank() && name.isNotBlank() -> "$num · $name"
                     num.isNotBlank() -> num
@@ -513,6 +542,24 @@ class OasaRepository(
         )
     }
 }
+
+private data class RouteAtStopMeta(
+    val lineCode: String,
+    val lineId: String,
+    val lineDescr: String,
+    val routeDescr: String,
+)
+
+private fun List<OasaWebRouteForStopJson>.routeMetaByRouteCode(): Map<String, RouteAtStopMeta> =
+    mapNotNull { j ->
+        val rc = j.routeCode?.trim().orEmpty().ifBlank { return@mapNotNull null }
+        rc to RouteAtStopMeta(
+            lineCode = j.lineCode?.trim().orEmpty(),
+            lineId = j.lineId?.trim().orEmpty(),
+            lineDescr = j.lineDescr?.trim().orEmpty(),
+            routeDescr = j.routeDescr?.trim().orEmpty(),
+        )
+    }.toMap()
 
 private fun OasaStopXYJson.descrValue(): String =
     stopDescr?.trim().orEmpty().ifBlank { stopDescrAlt?.trim().orEmpty() }

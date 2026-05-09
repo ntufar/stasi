@@ -42,6 +42,15 @@ data class OasaArrivalJson(
     @SerializedName("route_descr") val routeDescr: String?,
 )
 
+/** Raw JSON from [webRoutesForStop](https://oasa-telematics-api.readthedocs.io/en/latest/webRoutesForStop.html). */
+data class OasaWebRouteForStopJson(
+    @SerializedName("RouteCode") val routeCode: String?,
+    @SerializedName("LineCode") val lineCode: String?,
+    @SerializedName("RouteDescr") val routeDescr: String?,
+    @SerializedName("LineID") val lineId: String?,
+    @SerializedName("LineDescr") val lineDescr: String?,
+)
+
 /** Raw JSON from [getBusLocation](https://oasa-telematics-api.readthedocs.io/en/latest/getBusLocation.html). */
 data class OasaBusJson(
     @SerializedName("VEH_NO") val vehNo: String?,

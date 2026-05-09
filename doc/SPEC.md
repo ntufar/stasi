@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.1 | Date: 2026-05-09 | Author: You
+Version: 0.2 | Date: 2026-05-09 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -18,8 +18,12 @@ Primary language: Greek UI, with English fallback.
 2. Search stops and lines by name, Greek fuzzy match (ignores accents)
 3. Arrivals screen: big minutes, line ID, destination
 4. Nearby stops using GPS, sorted by distance
-5. Route map: draw stops and connect with polyline, show live bus positions
-6. Offline cache: lines and stops cached 24h, arrivals cached 30s
+5. Route map: draw **all route stops** on the map (not only the polyline), with **clear direction of travel**:
+   - stops ordered along the route with **sequence numbers** (1 … N);
+   - **first stop** (departure) and **last stop** (terminus) visually distinct from middle stops (e.g. color/size);
+   - **live buses** shown with **heading** (arrow or rotated icon) approximating direction toward the next segment of the route.
+6. **Map → arrivals:** tapping a **stop marker** on the route map opens the **Arrivals** screen for that stop code (same as Search/Home), showing upcoming buses and times.
+7. Offline cache: lines and stops cached 24h, arrivals cached 30s
 
 ## 4. Out of Scope for MVP
 - Ticket purchase
@@ -77,6 +81,7 @@ Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
 Arrivals → map icon → MapScreen with route polyline
 MapScreen → tap bus → show vehicle number
+MapScreen → tap stop marker → Arrivals for that stop
 
 Design rules:
 - Dark theme by default, AMOLED black
@@ -105,7 +110,8 @@ Design rules:
 ## 13. Acceptance Criteria
 - User opens app, sees favorite stop with correct minutes within 1s
 - Search "syntagma" finds "ΣΥΝΤΑΓΜΑ"
-- Map shows line 140 stops connected, updates bus every 15s
+- Map shows line 140 **polyline and stop markers** (numbered, direction clear), updates bus positions periodically
+- Tapping a stop on the map opens arrivals for that stop
 - App works airplane mode after first load for cached stops
 
 ## 14. Next Steps for Development

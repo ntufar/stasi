@@ -42,6 +42,12 @@ interface OasaApi {
     ): List<OasaArrivalJson>
 
     @POST("api/")
+    suspend fun webRoutesForStop(
+        @Query("act") act: String = "webRoutesForStop",
+        @Query("p1") stopCode: String,
+    ): List<OasaWebRouteForStopJson>
+
+    @POST("api/")
     suspend fun getBusLocation(
         @Query("act") act: String = "getBusLocation",
         @Query("p1") routeCode: String,

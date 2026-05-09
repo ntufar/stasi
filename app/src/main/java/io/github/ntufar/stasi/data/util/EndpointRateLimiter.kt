@@ -41,6 +41,7 @@ class EndpointRateLimiter(private val minIntervalMs: Long = 1_200L) {
         const val EP_WEB_GET_STOPS = "webGetStops"
         const val EP_GET_STOP_XY = "getStopNameAndXY"
         const val EP_GET_ARRIVALS = "getStopArrivals"
+        const val EP_WEB_ROUTES_FOR_STOP = "webRoutesForStop"
         const val EP_BUS_LOCATION = "getBusLocation"
         const val EP_CLOSEST_STOPS = "getClosestStops"
 
