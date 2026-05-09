@@ -10,12 +10,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,6 +76,32 @@ fun SearchScreen(
                     label = { Text("Στάση ή γραμμή") },
                     singleLine = true,
                 )
+            }
+            when (ui.linesCatalog) {
+                LinesCatalogState.Loading -> {
+                    item {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text(
+                            "Φόρτωση καταλόγου γραμμών…",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+                LinesCatalogState.Unavailable -> {
+                    item {
+                        Text(
+                            "Δεν ήταν δυνατή η φόρτωση των γραμμών από τον διακομιστή OASA. Ελέγξτε τη σύνδεση δικτύου.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        TextButton(onClick = vm::retryLinesCatalog) {
+                            Text("Επανάληψη")
+                        }
+                    }
+                }
+                LinesCatalogState.Ready -> Unit
             }
             if (ui.isSearching) {
                 item { CircularProgressIndicator(Modifier.padding(vertical = 8.dp)) }

@@ -1,9 +1,11 @@
 package com.example.stasi.ui.map
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.stasi.data.repository.BusOnRoute
 import com.example.stasi.data.repository.OasaRepository
+import com.example.stasi.BuildConfig
 import com.example.stasi.data.repository.RouteStop
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -80,10 +82,19 @@ class MapViewModel(
                 s.copy(isLoading = true, error = null, buses = emptyList())
             }
             try {
+                if (BuildConfig.DEBUG) {
+                    Log.d("StasiMap", "fetch route stops for \"$code\"")
+                }
                 val fetch = withTimeoutOrNull(MAP_FETCH_TIMEOUT_MS) {
                     withContext(Dispatchers.IO) {
                         repository.getRouteStops(code)
                     }
+                }
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "StasiMap",
+                        "fetch done: timeout=${fetch == null} stops=${fetch?.stops?.size ?: 0}",
+                    )
                 }
                 if (fetch == null) {
                     _uiState.update {

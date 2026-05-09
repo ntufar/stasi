@@ -134,8 +134,13 @@ class OasaRepository(
     }
 
     /** Fast path for Search screen: lines list only, no route/stop ingest (avoids starving interactive API use). */
-    suspend fun warmLinesCacheIfEmpty() {
+    suspend fun warmLinesCatalogIfEmpty(): Boolean {
         ensureLinesCatalogForResolve()
+        return try {
+            dao.allLines().isNotEmpty()
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** One lightweight [webGetLines] when DB has no lines so map/search can resolve public line numbers. */

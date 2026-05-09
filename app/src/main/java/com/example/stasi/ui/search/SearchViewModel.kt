@@ -14,11 +14,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+sealed interface LinesCatalogState {
+    data object Loading : LinesCatalogState
+    data object Ready : LinesCatalogState
+    data object Unavailable : LinesCatalogState
+}
+
 data class SearchUiState(
     val query: String = "",
     val stops: List<CachedStopEntity> = emptyList(),
     val lines: List<CachedLineEntity> = emptyList(),
     val isSearching: Boolean = false,
+    val linesCatalog: LinesCatalogState = LinesCatalogState.Loading,
 )
 
 class SearchViewModel(
@@ -32,7 +39,25 @@ class SearchViewModel(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.warmLinesCacheIfEmpty()
+            val ok = repository.warmLinesCatalogIfEmpty()
+            _uiState.update {
+                it.copy(
+                    linesCatalog = if (ok) LinesCatalogState.Ready else LinesCatalogState.Unavailable,
+                )
+            }
+        }
+    }
+
+    fun retryLinesCatalog() {
+        if (_uiState.value.linesCatalog == LinesCatalogState.Loading) return
+        _uiState.update { it.copy(linesCatalog = LinesCatalogState.Loading) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = repository.warmLinesCatalogIfEmpty()
+            _uiState.update {
+                it.copy(
+                    linesCatalog = if (ok) LinesCatalogState.Ready else LinesCatalogState.Unavailable,
+                )
+            }
         }
     }
 

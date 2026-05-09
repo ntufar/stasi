@@ -1,12 +1,15 @@
 package com.example.stasi.data.api
 
+import android.util.Log
+import com.example.stasi.BuildConfig
 import java.util.concurrent.TimeUnit
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.POST
 import retrofit2.http.Query
 
-private const val BASE = "http://telematics.oasa.gr/"
+private const val BASE = "https://telematics.oasa.gr/"
 
 interface OasaApi {
     @POST("api/")
@@ -53,11 +56,19 @@ interface OasaApi {
 }
 
 fun createOasaApi(): OasaApi {
+    val logging = HttpLoggingInterceptor { line -> Log.d("StasiOasa", line) }.apply {
+        level = if (BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.BODY
+        } else {
+            HttpLoggingInterceptor.Level.NONE
+        }
+    }
     val client = okhttp3.OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .callTimeout(45, TimeUnit.SECONDS)
+        .addInterceptor(logging)
         .addInterceptor { chain ->
             val req = chain.request().newBuilder()
                 .header("User-Agent", "Stasi/1.0 (+https://github.com/you/stasi)")
