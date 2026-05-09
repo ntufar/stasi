@@ -51,6 +51,19 @@ data class BusOnRoute(
     val lng: Double,
 )
 
+data class RouteDirection(
+    val routeCode: String,
+    val descr: String,
+)
+
+data class LineRouteInfo(
+    val lineCode: String,
+    /** Public-facing line number, e.g. "750"; falls back to [lineCode] when absent. */
+    val lineId: String,
+    val lineDescr: String,
+    val directions: List<RouteDirection>,
+)
+
 data class ArrivalDetail(
     val routeCode: String,
     val vehCode: String,
@@ -435,6 +448,118 @@ class OasaRepository(
     private suspend fun resolveLineToRouteCodeFromCache(userInput: String): String? {
         val line = dao.linesByExactCodeOrId(userInput).firstOrNull() ?: return null
         return dao.routesForLine(line.lineCode).firstOrNull()?.routeCode
+    }
+
+    /**
+     * Returns the line metadata + every direction (route) for the line containing [routeCode].
+     *
+     * Uses cached `cached_routes` / `cached_lines` first (avoiding extra network during the live
+     * map polling loop). Falls back to `webRoutesForStop` (using [hintStopCode] from the route's
+     * stops list) to resolve the lineCode, and to `webGetRoutes` to enumerate directions when the
+     * cache only knows about a single direction.
+     */
+    suspend fun getLineRouteInfoForRoute(
+        routeCode: String,
+        hintStopCode: String? = null,
+    ): LineRouteInfo? {
+        val rc = routeCode.trim()
+        if (rc.isEmpty()) return null
+
+        var lineCode: String? = try {
+            dao.routeByCode(rc)?.lineCode?.trim()?.ifBlank { null }
+        } catch (_: Exception) {
+            null
+        }
+
+        var fetchedDirections: List<RouteDirection>? = null
+        var lineMetaFromWeb: RouteAtStopMeta? = null
+
+        if (lineCode == null && !hintStopCode.isNullOrBlank()) {
+            val rows = try {
+                limiter.run(EndpointRateLimiter.EP_WEB_ROUTES_FOR_STOP) {
+                    api.webRoutesForStop(stopCode = hintStopCode)
+                }
+            } catch (e: Exception) {
+                rethrowIfCancellation(e)
+                emptyList()
+            }
+            val match = rows.firstOrNull { it.routeCode?.trim() == rc }
+            lineCode = match?.lineCode?.trim()?.ifBlank { null }
+            if (match != null) {
+                lineMetaFromWeb = RouteAtStopMeta(
+                    lineCode = match.lineCode?.trim().orEmpty(),
+                    lineId = match.lineId?.trim().orEmpty(),
+                    lineDescr = match.lineDescr?.trim().orEmpty(),
+                    routeDescr = match.routeDescr?.trim().orEmpty(),
+                )
+            }
+        }
+
+        if (lineCode == null) return null
+
+        val resolvedLineCode = lineCode
+
+        val cachedRoutes = try {
+            dao.routesForLine(resolvedLineCode)
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val cachedDirections = cachedRoutes.map { RouteDirection(it.routeCode, it.descr) }
+
+        if (cachedDirections.size < 2) {
+            fetchedDirections = try {
+                val raw = limiter.run(EndpointRateLimiter.gateWebGetRoutes(resolvedLineCode)) {
+                    api.webGetRoutes(lineCode = resolvedLineCode)
+                }
+                val mapped = raw.mapNotNull { r ->
+                    val code = r.routeCode?.trim().orEmpty().ifBlank { return@mapNotNull null }
+                    RouteDirection(
+                        routeCode = code,
+                        descr = r.routeDescr?.trim().orEmpty(),
+                    )
+                }
+                if (mapped.isNotEmpty()) {
+                    val now = System.currentTimeMillis()
+                    dao.insertRoutes(
+                        mapped.map { d ->
+                            CachedRouteEntity(
+                                routeCode = d.routeCode,
+                                lineCode = resolvedLineCode,
+                                descr = d.descr,
+                                normDescr = normalizeGreek(d.descr),
+                                fetchedAtMillis = now,
+                            )
+                        },
+                    )
+                }
+                mapped
+            } catch (e: Exception) {
+                rethrowIfCancellation(e)
+                null
+            }
+        }
+
+        val directions = (fetchedDirections ?: cachedDirections).ifEmpty {
+            // Last resort: at least surface the current direction so the UI has something to show.
+            listOf(RouteDirection(rc, ""))
+        }
+
+        val lineRow = try {
+            dao.lineByCode(resolvedLineCode)
+        } catch (_: Exception) {
+            null
+        }
+        val lineId = lineRow?.lineId?.trim().orEmpty()
+            .ifBlank { lineMetaFromWeb?.lineId.orEmpty() }
+        val lineDescr = lineRow?.descr?.trim().orEmpty()
+            .ifBlank { lineMetaFromWeb?.lineDescr.orEmpty() }
+
+        return LineRouteInfo(
+            lineCode = resolvedLineCode,
+            lineId = lineId,
+            lineDescr = lineDescr,
+            directions = directions,
+        )
     }
 
     suspend fun getBusesOnRoute(routeCode: String): List<BusOnRoute> {

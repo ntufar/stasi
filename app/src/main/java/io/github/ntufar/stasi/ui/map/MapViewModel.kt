@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.ntufar.stasi.data.repository.BusOnRoute
+import io.github.ntufar.stasi.data.repository.LineRouteInfo
 import io.github.ntufar.stasi.data.repository.OasaRepository
 import io.github.ntufar.stasi.BuildConfig
+import io.github.ntufar.stasi.data.repository.RouteDirection
 import io.github.ntufar.stasi.data.repository.RouteStop
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +31,12 @@ data class MapUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val selectedVehicleNo: String? = null,
+    /** Public-facing line number (e.g., "750"), shown in the top bar title. */
+    val lineLabel: String? = null,
+    /** Optional human-readable line description (e.g., "ΛΕΩΦ. ΣΤΑΥΡΟΥ - ΤΕΧΝΟΠΟΛΗ"). */
+    val lineDescr: String? = null,
+    /** All known directions (routes) for the current line. */
+    val directions: List<RouteDirection> = emptyList(),
 )
 
 class MapViewModel(
@@ -74,8 +82,44 @@ class MapViewModel(
                 routeCodeInput = code,
                 appliedRouteCode = code,
                 selectedVehicleNo = null,
+                lineLabel = null,
+                lineDescr = null,
+                directions = emptyList(),
             )
         }
+        startRouteJob(code, refreshLineInfo = true)
+    }
+
+    /**
+     * Switch the map to another direction (route) of the same line. Resolves stops + buses for
+     * the picked [routeCode] but keeps the cached line label / directions list so the title and
+     * toggle stay stable while the data refreshes.
+     */
+    fun selectDirection(routeCode: String) {
+        val target = routeCode.trim()
+        if (target.isEmpty()) return
+        if (target == _uiState.value.appliedRouteCode) return
+        _uiState.update {
+            it.copy(
+                appliedRouteCode = target,
+                routeCodeInput = target,
+                selectedVehicleNo = null,
+            )
+        }
+        startRouteJob(target, refreshLineInfo = false)
+    }
+
+    fun toggleDirection() {
+        val state = _uiState.value
+        val dirs = state.directions
+        if (dirs.size < 2) return
+        val currentIndex = dirs.indexOfFirst { it.routeCode == state.appliedRouteCode }
+            .takeIf { it >= 0 } ?: 0
+        val next = dirs[(currentIndex + 1) % dirs.size]
+        selectDirection(next.routeCode)
+    }
+
+    private fun startRouteJob(code: String, refreshLineInfo: Boolean) {
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
             _uiState.update { s ->
@@ -124,6 +168,27 @@ class MapViewModel(
                         isLoading = false,
                         error = null,
                     )
+                }
+                if (refreshLineInfo || _uiState.value.directions.isEmpty()) {
+                    val hintStop = fetch.stops.firstOrNull()?.stopCode
+                    val info: LineRouteInfo? = try {
+                        withContext(Dispatchers.IO) {
+                            repository.getLineRouteInfoForRoute(routeForLive, hintStop)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (info != null) {
+                        _uiState.update {
+                            it.copy(
+                                lineLabel = info.lineId.ifBlank { info.lineCode },
+                                lineDescr = info.lineDescr.ifBlank { null },
+                                directions = info.directions,
+                            )
+                        }
+                    }
                 }
                 while (isActive) {
                     val buses = try {

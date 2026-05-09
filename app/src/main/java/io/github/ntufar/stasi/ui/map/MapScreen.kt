@@ -5,13 +5,17 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -115,11 +119,42 @@ fun MapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Χάρτης διαδρομής") },
+                title = {
+                    val line = uiState.lineLabel?.takeIf { it.isNotBlank() }
+                    val directionDescr = uiState.directions
+                        .firstOrNull { it.routeCode == uiState.appliedRouteCode }
+                        ?.descr
+                        ?.takeIf { it.isNotBlank() }
+                    val descr = directionDescr
+                        ?: uiState.lineDescr?.takeIf { it.isNotBlank() }
+                    Column {
+                        Text(
+                            text = line?.let { "Γραμμή $it" } ?: "Χάρτης διαδρομής",
+                            maxLines = 1,
+                        )
+                        if (descr != null) {
+                            Text(
+                                text = descr,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                actions = {
+                    if (uiState.directions.size >= 2) {
+                        IconButton(onClick = vm::toggleDirection) {
+                            Icon(
+                                imageVector = Icons.Default.SwapHoriz,
+                                contentDescription = "Αλλαγή κατεύθυνσης",
+                            )
                         }
                     }
                 },
@@ -151,29 +186,41 @@ fun MapScreen(
                     Text("Εμφάνιση")
                 }
             }
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.CenterHorizontally),
-                )
-            }
-            uiState.error?.let { err ->
-                Text(
-                    text = err,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-            StasiMapLibre(
-                stops = uiState.stops,
-                buses = uiState.buses,
-                onBusVehicleSelected = vm::selectVehicle,
-                onStopSelected = onStopSelected,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            )
+            ) {
+                StasiMapLibre(
+                    stops = uiState.stops,
+                    buses = uiState.buses,
+                    onBusVehicleSelected = vm::selectVehicle,
+                    onStopSelected = onStopSelected,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp),
+                    )
+                }
+                uiState.error?.let { err ->
+                    Text(
+                        text = err,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(16.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
         }
     }
 
@@ -236,7 +283,7 @@ private fun StasiMapLibre(
             map.setStyle(Style.Builder().fromUri(STYLE_URI)) { style ->
                 ensureRouteLayers(style)
                 ensureStopLayers(style)
-                val iconSizePx = (context.resources.displayMetrics.density * 40f).toInt().coerceIn(32, 96)
+                val iconSizePx = (context.resources.displayMetrics.density * 28f).toInt().coerceIn(24, 72)
                 style.addImage(BUS_ICON_ID, createBusArrowBitmap(iconSizePx))
                 ensureBusLayers(style)
                 map.addOnMapClickListener { latLng ->
@@ -465,6 +512,10 @@ private fun bearingDegrees(lat1: Double, lng1: Double, lat2: Double, lng2: Doubl
     return (Math.toDegrees(θ) + 360.0) % 360.0
 }
 
+/**
+ * Slim teardrop / kite glyph: long pointed nose, short notched tail. Keeps the heading obvious
+ * during turns without dominating the map at the route stops' scale.
+ */
 private fun createBusArrowBitmap(sizePx: Int): Bitmap {
     val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
@@ -474,15 +525,19 @@ private fun createBusArrowBitmap(sizePx: Int): Bitmap {
     }
     val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = sizePx * 0.06f
+        strokeWidth = sizePx * 0.07f
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
         color = Color.rgb(27, 27, 27)
     }
+    val w = sizePx.toFloat()
+    val h = sizePx.toFloat()
+    val cx = w / 2f
     val path = Path().apply {
-        val tip = sizePx * 0.12f
-        val base = sizePx * 0.88f
-        moveTo(sizePx / 2f, tip)
-        lineTo(sizePx * 0.88f, base)
-        lineTo(sizePx * 0.12f, base)
+        moveTo(cx, h * 0.08f)
+        lineTo(w * 0.78f, h * 0.92f)
+        lineTo(cx, h * 0.72f)
+        lineTo(w * 0.22f, h * 0.92f)
         close()
     }
     canvas.drawPath(path, fill)
