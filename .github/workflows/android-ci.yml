@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   lint-test-build:
@@ -49,13 +50,35 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug --stacktrace --warning-mode all
 
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stasi-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload lint and test reports
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stasi-ci-reports
+          path: |
+            app/build/reports/lint-results-debug.*
+            app/build/reports/lint-results-debug/**
+            app/build/reports/tests/**
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: android-ci-reports
+          name: android-ci-failure-reports
           path: |
             **/build/reports/**
             **/build/test-results/**
             **/build/outputs/logs/**
           if-no-files-found: ignore
+          retention-days: 7
