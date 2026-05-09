@@ -37,7 +37,7 @@ Design defaults: dark / AMOLED-friendly Material 3. Primary UI language Greek wi
 - **MapLibre** Android SDK
 - **Google Play services — location** (coarse/fine for nearby stops)
 
-Detailed API contracts, rate limits, and architecture notes live in [doc/SPEC.md](doc/SPEC.md).
+Detailed API contracts, rate limits, and architecture notes live in [docs/SPEC.md](docs/SPEC.md).
 
 ---
 
@@ -143,7 +143,7 @@ app/src/main/java/io/github/ntufar/stasi/
   di/         # App wiring / composition
   ui/         # Compose screens & theme
   MainActivity.kt, StasiApp.kt, StasiApplication.kt
-doc/SPEC.md   # Product & technical specification
+docs/SPEC.md   # Product & technical specification
 ```
 
 ---
