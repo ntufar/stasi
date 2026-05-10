@@ -1,8 +1,10 @@
 package io.github.ntufar.stasi.ui.map
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.ntufar.stasi.R
 import io.github.ntufar.stasi.data.repository.BusOnRoute
 import io.github.ntufar.stasi.data.repository.LineRouteInfo
 import io.github.ntufar.stasi.data.repository.OasaRepository
@@ -48,9 +50,14 @@ data class MapUiState(
 )
 
 class MapViewModel(
+    application: Application,
     private val repository: OasaRepository,
     private val presetRouteCode: String?,
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private fun str(resId: Int): String = getApplication<Application>().getString(resId)
+    private fun str(resId: Int, vararg formatArgs: Any): String =
+        getApplication<Application>().getString(resId, *formatArgs)
 
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
@@ -144,7 +151,7 @@ class MapViewModel(
             _uiState.update {
                 it.copy(
                     timetableLoading = false,
-                    timetableError = "Δεν βρέθηκε κωδικός γραμμής για δρομολόγια.",
+                    timetableError = str(R.string.map_error_line_code_missing),
                     timetable = null,
                 )
             }
@@ -165,7 +172,7 @@ class MapViewModel(
                         timetable = t,
                         timetableLoading = false,
                         timetableError = if (empty) {
-                            "Δεν βρέθηκαν δεδομένα δρομολογίου."
+                            str(R.string.map_error_timetable_empty)
                         } else {
                             null
                         },
@@ -178,7 +185,7 @@ class MapViewModel(
                     it.copy(
                         timetableLoading = false,
                         timetable = null,
-                        timetableError = e.message ?: "Σφάλμα φόρτωσης δρομολογίου.",
+                        timetableError = e.message ?: str(R.string.map_error_timetable_load),
                     )
                 }
             }
@@ -234,7 +241,7 @@ class MapViewModel(
                         it.copy(
                             isLoading = false,
                             stops = emptyList(),
-                            error = "Λήξη χρόνου· ελέγξτε το δίκτυο ή δοκιμάστε ξανά.",
+                            error = str(R.string.map_error_timeout),
                         )
                     }
                     return@launch
@@ -244,7 +251,7 @@ class MapViewModel(
                         it.copy(
                             isLoading = false,
                             stops = emptyList(),
-                            error = "Δεν βρέθηκαν στάσεις για τη διαδρομή $code.",
+                            error = str(R.string.map_error_no_stops, code),
                         )
                     }
                     return@launch
@@ -308,7 +315,7 @@ class MapViewModel(
                     it.copy(
                         isLoading = false,
                         stops = emptyList(),
-                        error = e.message ?: "Σφάλμα φόρτωσης διαδρομής.",
+                        error = e.message ?: str(R.string.map_error_route_load),
                     )
                 }
             }

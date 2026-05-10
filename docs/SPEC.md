@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.8 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.11 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -11,7 +11,7 @@ Goal: open app → see your bus in under 1 second.
 - Tourists with limited data
 - Users frustrated by slow official app
 
-Primary language: Greek UI, with English fallback.
+Primary language: Greek UI by default; user may switch **English** or **Greek** in the app menu (persisted). Default resource fallback language for missing keys is English (`values/`).
 
 ## 3. Core Features (MVP)
 1. Home screen with favorite stops, showing next 2 arrivals per stop live
@@ -19,14 +19,15 @@ Primary language: Greek UI, with English fallback.
 3. Arrivals screen: big minutes, line ID, destination; optional **origin departure** line when the stop is not that route’s first stop (see item 7)
 4. Nearby stops using GPS, sorted by distance
 5. Route map: draw **all route stops** on the map (not only the polyline), with **clear direction of travel**:
-   - **Tabs** when a route has loaded: **Χάρτης** (live map) and **Δρομολόγια** (daily timetable from OASA `getDailySchedule` using the line’s internal `line_code`; **Αφετηρία** (`come`) and **Τέρμα** (`go`) appear as **two columns on the same row** so outbound and return time bands are visible together; shorter lists pad with “—” on the missing side);
+   - **Tabs** when a route has loaded: **Map** / **Timetable** (EN) or **Χάρτης** / **Δρομολόγια** (EL) — daily timetable from OASA `getDailySchedule` using the line’s internal `line_code`; origin (**Αφετηρία** / `come`) and terminus (**Τέρμα** / `go`) appear as **two columns on the same row** so outbound and return time bands are visible together; shorter lists pad with “—” on the missing side;
    - stops ordered along the route with **sequence numbers** (1 … N);
    - **first stop** (departure) and **last stop** (terminus) visually distinct from middle stops (e.g. color/size);
    - **live buses** shown with **heading** (arrow or rotated icon) approximating direction toward the next segment of the route.
-   - **Initial map camera:** when a route is first shown for a given stop sequence, the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait for a fix); otherwise it **fits the whole route** in view. Periodic live refresh must **not** reset the camera. Changing route/direction (different stop sequence) runs this logic again. The **My Location** FAB still fits **route + user** in one view when pressed (with location permission).
+   - **Initial map camera:** when opening the route map **before a line is loaded** (manual entry screen), the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait), matching the default zoom used by **My Location** when there is no route; otherwise the default world view stays until the user searches or uses the FAB. When a route is first shown for a given stop sequence, the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait for a fix); otherwise it **fits the whole route** in view. Periodic live refresh must **not** reset the camera. Changing route/direction (different stop sequence) runs this logic again. The **My Location** FAB still fits **route + user** in one view when pressed (with location permission).
 6. **Map → arrivals:** tapping a **stop marker** on the route map opens the **Arrivals** screen for that stop code (same as Search/Home), showing upcoming buses and times.
 7. **Arrivals at a stop (not the route origin):** when the viewed stop is **not** the **first stop** of that route (in OASA route order), the app shows **when the next service from the route’s origin** is planned. **Schedule-based** hints (`getDailySchedule`, `come` / αφετηρία, Europe/Athens, next window start) appear as their **own list row** (clock + line + “Δρομολόγιο από αφετηρία”), **not** nested under a live vehicle row, so users do not confuse them with the bus counted down in minutes above. **Fallback** when schedule data is missing: a single secondary line on the live row from live `getStopArrivals` at the origin stop. Omit when the user is already at the origin stop.
 8. Offline cache: lines and stops cached 24h, arrivals cached 30s
+9. **Navigation drawer** (menu icon on main screens): jump to **Home**, **Search**, or **Route map** (manual entry); language **English / Greek**. **Edge-swipe to open the drawer is disabled on Route map** (manual or preset line) so horizontal map pans are not mistaken for opening the drawer; use the **menu** icon there. Other screens keep edge-swipe where the platform drawer allows it.
 
 ## 4. Out of Scope for MVP
 - Ticket purchase
@@ -38,7 +39,8 @@ Primary language: Greek UI, with English fallback.
 - UI: Jetpack Compose + Material 3
 - Architecture: MVVM, Repository pattern
 - Networking: Retrofit2 + Gson, Coroutines
-- Storage: Room for cache, DataStore for preferences
+- Storage: Room for cache, DataStore for preferences (favorites + UI language)
+- Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`)
 - Maps: MapLibre SDK (open source, no API key)
 - Min SDK 26, Target SDK 34
 
@@ -77,10 +79,12 @@ io.github.ntufar.stasi/
   - search/SearchScreen.kt
   - map/MapScreen.kt
   - theme/
+- data/repository/SettingsRepository.kt (UI locale)
 - MainActivity.kt
-- StasiApp.kt
+- StasiApp.kt (NavHost + drawer)
 
 ## 9. UI Flows
+Any main screen → **menu icon** → drawer → Home / Search / Route map, or **Language** (English / Greek). On **Route map**, open the drawer via **menu** only (no edge-swipe), so map gestures stay uninterrupted.
 Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
 Arrivals → map icon → MapScreen with route polyline
@@ -93,6 +97,7 @@ Design rules:
 - Arrivals list: **minutes** in 48sp bold using **primary (accent) color**; **line / route title** in semibold `onSurface`; **direction and origin-departure hints** in smaller type with muted **`onSurfaceVariant`**; clear vertical spacing between those tiers
 - One primary action per screen
 - No splash screen
+- All user-visible chrome (labels, errors, tabs where applicable) localized via `strings.xml` (`values` English, `values-el` Greek); API-supplied stop/line names stay as returned by OASA
 
 ## 10. Key Behaviors for Copilot
 - When generating API calls, always use suspend functions with Retrofit, wrap in try/catch, fallback to Room cache
@@ -122,6 +127,8 @@ Design rules:
 - Tapping a stop on the map opens arrivals for that stop
 - At a non-origin stop, arrivals list shows **origin departure** information for each route where data is available (schedule-based when `getDailySchedule` returns windows, else live origin arrivals)
 - App works airplane mode after first load for cached stops
+- Drawer opens from menu icon; choosing a top-level destination preserves reasonable back stack behavior (`popUpTo` start destination with state save/restore)
+- Switching language updates UI immediately (activity recreate); choice survives app restart
 
 ## 14. Next Steps for Development
 1. Implement OasaRepository with caching

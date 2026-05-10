@@ -10,12 +10,18 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import io.github.ntufar.stasi.di.LocalAppContainer
 import io.github.ntufar.stasi.ui.theme.StasiTheme
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val container = (application as StasiApplication).container
+        runBlocking {
+            val tag = container.settingsRepository.localeTag.first()
+            AppLocale.apply(tag)
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val container = (application as StasiApplication).container
         setContent {
             CompositionLocalProvider(LocalAppContainer provides container) {
                 StasiTheme {

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.ntufar.stasi.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +42,7 @@ import io.github.ntufar.stasi.di.LocalAppContainer
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    onOpenMenu: () -> Unit,
     onBack: () -> Unit,
     onStopSelected: (stopCode: String) -> Unit,
     onOpenLineOnMap: (routeCode: String) -> Unit,
@@ -59,10 +63,18 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Αναζήτηση") },
+                title = { Text(stringResource(R.string.search_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back),
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onOpenMenu) {
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                 },
             )
@@ -81,7 +93,7 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 12.dp),
-                    label = { Text("Στάση ή γραμμή") },
+                    label = { Text(stringResource(R.string.search_label_stop_or_line)) },
                     singleLine = true,
                 )
             }
@@ -90,7 +102,7 @@ fun SearchScreen(
                     item {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         Text(
-                            "Φόρτωση καταλόγου γραμμών…",
+                            stringResource(R.string.search_loading_catalog),
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
                         )
@@ -99,13 +111,13 @@ fun SearchScreen(
                 LinesCatalogState.Unavailable -> {
                     item {
                         Text(
-                            "Δεν ήταν δυνατή η φόρτωση των γραμμών από τον διακομιστή OASA. Ελέγξτε τη σύνδεση δικτύου.",
+                            stringResource(R.string.search_catalog_unavailable),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                         TextButton(onClick = vm::retryLinesCatalog) {
-                            Text("Επανάληψη")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 }
@@ -115,7 +127,11 @@ fun SearchScreen(
                 item { CircularProgressIndicator(Modifier.padding(vertical = 8.dp)) }
             }
             item {
-                Text("Γραμμές", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+                Text(
+                    stringResource(R.string.lines_heading),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
             items(ui.lines, key = { it.lineCode }) { line ->
                 val openingLine = ui.lineOpenInProgressForCode != null
@@ -131,7 +147,7 @@ fun SearchScreen(
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            "Δεν ήταν δυνατή η φόρτωση της διαδρομής. Ελέγξτε το δίκτυο.",
+                                            context.getString(R.string.toast_route_load_failed),
                                             Toast.LENGTH_SHORT,
                                         ).show()
                                     }
@@ -157,7 +173,11 @@ fun SearchScreen(
                 }
             }
             item {
-                Text("Στάσεις", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
+                Text(
+                    stringResource(R.string.stops_heading),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
             }
             items(ui.stops, key = { it.stopCode }) { stop ->
                 Text(

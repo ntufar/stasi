@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import io.github.ntufar.stasi.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -52,6 +55,7 @@ private fun hasAnyLocationPermission(context: android.content.Context): Boolean 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onOpenMenu: () -> Unit,
     onSearch: () -> Unit,
     onArrivals: (stopCode: String) -> Unit,
     onMapManual: () -> Unit,
@@ -93,13 +97,16 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Stasi") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onOpenMenu) {
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    }
                     IconButton(onClick = onSearch) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search))
                     }
                     IconButton(onClick = onMapManual) {
-                        Icon(Icons.Default.Map, contentDescription = "Map")
+                        Icon(Icons.Default.Map, contentDescription = stringResource(R.string.cd_map))
                     }
                 },
             )
@@ -114,7 +121,7 @@ fun HomeScreen(
         ) {
             item {
                 Text(
-                    "Κοντινές στάσεις",
+                    stringResource(R.string.home_nearby_stops),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -129,7 +136,7 @@ fun HomeScreen(
                         )
                     },
                 ) {
-                    Text("Τοποθεσία (GPS)")
+                    Text(stringResource(R.string.home_location_button))
                 }
                 ui.nearbyError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -148,7 +155,7 @@ fun HomeScreen(
 
             item {
                 Text(
-                    "Αγαπημένες στάσεις",
+                    stringResource(R.string.home_favorites),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -161,7 +168,7 @@ fun HomeScreen(
             if (ui.favoriteCards.isEmpty() && !ui.isLoading) {
                 item {
                     Text(
-                        "Δεν έχεις ακόμα αγαπημένες. Πρόσθεσε από την οθόνη αφίξεων (εικονίδιο αστεριού).",
+                        stringResource(R.string.home_favorites_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -182,14 +189,18 @@ fun HomeScreen(
                         )
                         if (card.arrivals.isEmpty()) {
                             Text(
-                                "Δεν υπάρχουν δεδομένα αφίξεων.",
+                                stringResource(R.string.home_no_arrivals),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
                         } else {
                             card.arrivals.take(2).forEach { a ->
-                                val m = if (a.minutes >= 999) "—" else "${a.minutes}΄"
+                                val m = if (a.minutes >= 999) {
+                                    "—"
+                                } else {
+                                    stringResource(R.string.minutes_short, a.minutes)
+                                }
                                 Column(Modifier.padding(top = 10.dp)) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),

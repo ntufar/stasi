@@ -5,12 +5,14 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import io.github.ntufar.stasi.data.local.AppDatabase
 import io.github.ntufar.stasi.data.repository.FavoritesRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.data.repository.SettingsRepository
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val database: AppDatabase = AppDatabase.build(appContext)
 
     val favoritesRepository = FavoritesRepository(appContext)
+    val settingsRepository = SettingsRepository(appContext)
     val oasaRepository: OasaRepository = OasaRepository(dao = database.stasiDao())
 }
 

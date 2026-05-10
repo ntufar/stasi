@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,7 +28,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import io.github.ntufar.stasi.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -42,6 +45,7 @@ import io.github.ntufar.stasi.di.LocalAppContainer
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArrivalsScreen(
+    onOpenMenu: () -> Unit,
     stopCode: String,
     onBack: () -> Unit,
     onOpenMap: (routeCode: String) -> Unit,
@@ -76,14 +80,20 @@ fun ArrivalsScreen(
                 title = { Text(ui.title.ifBlank { stopCode }) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back),
+                        )
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenMenu) {
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    }
                     IconButton(onClick = { vm.toggleFavorite() }) {
                         Icon(
                             imageVector = if (ui.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder,
-                            contentDescription = "Favorite",
+                            contentDescription = stringResource(R.string.cd_favorite),
                         )
                     }
                     IconButton(
@@ -92,7 +102,7 @@ fun ArrivalsScreen(
                         },
                         enabled = mapRouteCode != null,
                     ) {
-                        Icon(Icons.Default.Map, contentDescription = "Map")
+                        Icon(Icons.Default.Map, contentDescription = stringResource(R.string.cd_map))
                     }
                 },
             )
@@ -120,12 +130,20 @@ fun ArrivalsScreen(
                     when (row) {
                         is ArrivalListRow.Live -> {
                             val a = row.detail
-                            val minutesText = if (a.minutes >= 999) "—" else "${a.minutes}΄"
+                            val minutesText = if (a.minutes >= 999) {
+                                "—"
+                            } else {
+                                stringResource(R.string.minutes_short, a.minutes)
+                            }
                             val originText = a.originDepartureMinutes?.let { om ->
                                 if (om >= 999) return@let null
                                 val oLabel = a.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
                                 val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
-                                "Από αφετηρία$fromPart: ${om}΄"
+                                stringResource(
+                                    R.string.arrivals_from_origin_minutes,
+                                    fromPart,
+                                    stringResource(R.string.minutes_short, om),
+                                )
                             }
                             Column(
                                 Modifier
@@ -171,8 +189,8 @@ fun ArrivalsScreen(
                             val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
                             val approx = when {
                                 row.minutesUntil >= 999 -> null
-                                row.minutesUntil <= 0 -> "σε <1΄"
-                                else -> "~${row.minutesUntil}΄"
+                                row.minutesUntil <= 0 -> stringResource(R.string.arrivals_traffic_approx_less_than)
+                                else -> stringResource(R.string.arrivals_traffic_approx_minutes, row.minutesUntil)
                             }
                             Column(
                                 Modifier
@@ -196,14 +214,14 @@ fun ArrivalsScreen(
                                     color = scheme.onSurface,
                                 )
                                 Text(
-                                    text = "Δρομολόγιο από αφετηρία$fromPart",
+                                    text = stringResource(R.string.arrivals_schedule_from_origin, fromPart),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = scheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 6.dp),
                                 )
                                 if (approx != null) {
                                     Text(
-                                        text = "Έναρξη κυκλοφορίας περίπου $approx",
+                                        text = stringResource(R.string.arrivals_traffic_start_approx, approx),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = scheme.onSurfaceVariant,
                                         modifier = Modifier.padding(top = 6.dp),

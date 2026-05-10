@@ -1,5 +1,6 @@
 package io.github.ntufar.stasi.ui.map
 
+import android.app.Application
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -58,7 +60,9 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.ntufar.stasi.R
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -136,22 +140,27 @@ private val STOP_KINDS = listOf(
 @Composable
 fun MapScreen(
     presetRouteCode: String?,
+    onOpenMenu: () -> Unit,
     onBack: (() -> Unit)?,
     onStopSelected: (stopCode: String) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val vm: MapViewModel = viewModel(
         key = presetRouteCode ?: "manual",
-        factory = remember(presetRouteCode, container) {
+        factory = remember(presetRouteCode, container, context) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    MapViewModel(container.oasaRepository, presetRouteCode) as T
+                    MapViewModel(
+                        context.applicationContext as Application,
+                        container.oasaRepository,
+                        presetRouteCode,
+                    ) as T
             }
         },
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     var userLatLng by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var recenterSignal by remember { mutableIntStateOf(0) }
     val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -222,7 +231,8 @@ fun MapScreen(
                         ?: uiState.lineDescr?.takeIf { it.isNotBlank() }
                     Column {
                         Text(
-                            text = line?.let { "Γραμμή $it" } ?: "Χάρτης διαδρομής",
+                            text = line?.let { stringResource(R.string.map_title_line, it) }
+                                ?: stringResource(R.string.map_title_fallback),
                             maxLines = 1,
                         )
                         if (descr != null) {
@@ -237,16 +247,22 @@ fun MapScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
+                            )
                         }
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenMenu) {
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    }
                     if (uiState.directions.size >= 2) {
                         IconButton(onClick = vm::toggleDirection) {
                             Icon(
                                 imageVector = Icons.Default.SwapHoriz,
-                                contentDescription = "Αλλαγή κατεύθυνσης",
+                                contentDescription = stringResource(R.string.cd_swap_direction),
                             )
                         }
                     }
@@ -266,9 +282,11 @@ fun MapScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    label = { Text("Γραμμή ή κωδικός διαδρομής") },
+                    label = { Text(stringResource(R.string.map_label_route_or_code)) },
                     singleLine = true,
-                    trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_title))
+                    },
                 )
                 FilledTonalButton(
                     onClick = vm::applyRouteCode,
@@ -276,7 +294,7 @@ fun MapScreen(
                         .padding(horizontal = 16.dp)
                         .align(Alignment.End),
                 ) {
-                    Text("Εμφάνιση")
+                    Text(stringResource(R.string.map_show))
                 }
             }
             val showRouteTabs =
@@ -286,12 +304,12 @@ fun MapScreen(
                     Tab(
                         selected = uiState.routeTabIndex == 0,
                         onClick = { vm.onRouteTabSelected(0) },
-                        text = { Text("Χάρτης") },
+                        text = { Text(stringResource(R.string.map_tab_map)) },
                     )
                     Tab(
                         selected = uiState.routeTabIndex == 1,
                         onClick = { vm.onRouteTabSelected(1) },
-                        text = { Text("Δρομολόγια") },
+                        text = { Text(stringResource(R.string.map_tab_timetable)) },
                     )
                 }
             }
@@ -328,7 +346,10 @@ fun MapScreen(
                                 .align(Alignment.BottomEnd)
                                 .padding(16.dp),
                         ) {
-                            Icon(Icons.Default.MyLocation, contentDescription = "Τρέχουσα τοποθεσία")
+                            Icon(
+                                Icons.Default.MyLocation,
+                                contentDescription = stringResource(R.string.cd_my_location),
+                            )
                         }
                     }
                     if (uiState.isLoading) {
@@ -370,11 +391,11 @@ fun MapScreen(
             onDismissRequest = vm::dismissVehicleInfo,
             confirmButton = {
                 TextButton(onClick = vm::dismissVehicleInfo) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
-            title = { Text("Όχημα") },
-            text = { Text("Αριθμός οχήματος: $veh") },
+            title = { Text(stringResource(R.string.map_vehicle_title)) },
+            text = { Text(stringResource(R.string.map_vehicle_body, veh)) },
         )
     }
 }
@@ -418,7 +439,7 @@ private fun RouteTimetablePanel(
                 ) {
                     item {
                         Text(
-                            text = "Ημερήσιο πρόγραμμα",
+                            text = stringResource(R.string.timetable_daily_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -432,7 +453,7 @@ private fun RouteTimetablePanel(
                             verticalAlignment = Alignment.Top,
                         ) {
                             Text(
-                                text = "Αφετηρία",
+                                text = stringResource(R.string.timetable_origin),
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(end = 8.dp),
@@ -445,7 +466,7 @@ private fun RouteTimetablePanel(
                                     .padding(vertical = 2.dp),
                             )
                             Text(
-                                text = "Τέρμα",
+                                text = stringResource(R.string.timetable_terminus),
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(start = 8.dp),
@@ -458,7 +479,7 @@ private fun RouteTimetablePanel(
                     if (pairedRows == 0) {
                         item {
                             Text(
-                                text = "Δεν υπάρχουν δεδομένα.",
+                                text = stringResource(R.string.timetable_no_data),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -495,7 +516,7 @@ private fun RouteTimetablePanel(
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
-                            text = "Τα ωράρια προέρχονται από την OASA (getDailySchedule)· χρονικά παράθυρα, όχι αναχωρήσεις ανά δρομολόγιο.",
+                            text = stringResource(R.string.timetable_footer_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -678,8 +699,31 @@ private fun StasiMapLibre(
     LaunchedEffect(styleLoaded, stops, userLatLng, stopsFingerprint) {
         if (!styleLoaded) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
-        if (stops.isEmpty()) return@LaunchedEffect
         if (initialCameraDoneForRoute) return@LaunchedEffect
+
+        if (stops.isEmpty()) {
+            // Manual route map (no line loaded yet): still zoom to user like the FAB does.
+            val ul = userLatLng
+            if (ul != null) {
+                map.easeCamera(
+                    CameraUpdateFactory.newLatLngZoom(LatLng(ul.first, ul.second), 14.0),
+                    500,
+                )
+                initialCameraDoneForRoute = true
+                return@LaunchedEffect
+            }
+            delay(700)
+            if (initialCameraDoneForRoute) return@LaunchedEffect
+            userLatLngState.value?.let { late ->
+                map.easeCamera(
+                    CameraUpdateFactory.newLatLngZoom(LatLng(late.first, late.second), 14.0),
+                    500,
+                )
+            }
+            initialCameraDoneForRoute = true
+            return@LaunchedEffect
+        }
+
         val ul = userLatLng
         if (ul != null) {
             map.easeCamera(

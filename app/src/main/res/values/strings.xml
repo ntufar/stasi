@@ -1,4 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Stasi</string>
+
+    <string name="cd_menu">Open menu</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_map">Map</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_favorite">Favorite</string>
+    <string name="cd_swap_direction">Switch direction</string>
+    <string name="cd_my_location">My location</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_map">Route map</string>
+    <string name="language_heading">Language</string>
+    <string name="language_english">English</string>
+    <string name="language_greek">Greek</string>
+
+    <string name="home_nearby_stops">Nearby stops</string>
+    <string name="home_location_button">Location (GPS)</string>
+    <string name="home_favorites">Favorite stops</string>
+    <string name="home_favorites_empty">You don\'t have favorites yet. Add them from the arrivals screen (star icon).</string>
+    <string name="home_no_arrivals">No arrival data.</string>
+    <string name="minutes_short">%1$d min</string>
+
+    <string name="search_title">Search</string>
+    <string name="search_label_stop_or_line">Stop or line</string>
+    <string name="search_loading_catalog">Loading line catalog…</string>
+    <string name="search_catalog_unavailable">Could not load lines from the OASA server. Check your network connection.</string>
+    <string name="retry">Retry</string>
+    <string name="lines_heading">Lines</string>
+    <string name="stops_heading">Stops</string>
+    <string name="toast_route_load_failed">Could not load the route. Check your network.</string>
+
+    <string name="arrivals_from_origin_minutes">From origin%1$s: %2$s</string>
+    <string name="arrivals_schedule_from_origin">Scheduled departure from origin%1$s</string>
+    <string name="arrivals_traffic_approx_less_than">in &lt;1 min</string>
+    <string name="arrivals_traffic_approx_minutes">~%1$d min</string>
+    <string name="arrivals_traffic_start_approx">Service start approximately %1$s</string>
+
+    <string name="map_title_line">Line %1$s</string>
+    <string name="map_title_fallback">Route map</string>
+    <string name="map_label_route_or_code">Line or route code</string>
+    <string name="map_show">Show</string>
+    <string name="map_tab_map">Map</string>
+    <string name="map_tab_timetable">Timetable</string>
+    <string name="map_vehicle_title">Vehicle</string>
+    <string name="map_vehicle_body">Vehicle number: %1$s</string>
+    <string name="ok">OK</string>
+
+    <string name="timetable_daily_title">Daily schedule</string>
+    <string name="timetable_origin">Origin</string>
+    <string name="timetable_terminus">Terminus</string>
+    <string name="timetable_no_data">No data.</string>
+    <string name="timetable_footer_note">Times come from OASA (getDailySchedule): time windows, not individual trip departures.</string>
+
+    <string name="map_error_line_code_missing">Could not find a line code for timetables.</string>
+    <string name="map_error_timetable_empty">No timetable data found.</string>
+    <string name="map_error_timetable_load">Could not load timetable.</string>
+    <string name="map_error_timeout">Timed out—check your network or try again.</string>
+    <string name="map_error_no_stops">No stops found for route %1$s.</string>
+    <string name="map_error_route_load">Could not load route.</string>
 </resources>
