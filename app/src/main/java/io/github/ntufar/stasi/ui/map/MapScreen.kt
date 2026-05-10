@@ -162,6 +162,7 @@ fun MapScreen(
                     MapViewModel(
                         context.applicationContext as Application,
                         container.oasaRepository,
+                        container.recentActivityRepository,
                         presetRouteCode,
                     ) as T
             }

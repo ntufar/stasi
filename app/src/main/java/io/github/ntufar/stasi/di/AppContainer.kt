@@ -6,6 +6,7 @@ import io.github.ntufar.stasi.data.local.AppDatabase
 import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.FavoritesRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.data.repository.RecentActivityRepository
 import io.github.ntufar.stasi.data.repository.SettingsRepository
 
 class AppContainer(context: Context) {
@@ -13,6 +14,7 @@ class AppContainer(context: Context) {
     private val database: AppDatabase = AppDatabase.build(appContext)
 
     val favoritesRepository = FavoritesRepository(appContext)
+    val recentActivityRepository = RecentActivityRepository(appContext)
     val settingsRepository = SettingsRepository(appContext)
     val alertsRepository = AlertsRepository(appContext)
     val oasaRepository: OasaRepository = OasaRepository(dao = database.stasiDao())

@@ -8,6 +8,7 @@ import io.github.ntufar.stasi.R
 import io.github.ntufar.stasi.data.repository.BusOnRoute
 import io.github.ntufar.stasi.data.repository.LineRouteInfo
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.data.repository.RecentActivityRepository
 import io.github.ntufar.stasi.data.repository.RouteDailyTimetable
 import io.github.ntufar.stasi.BuildConfig
 import io.github.ntufar.stasi.data.repository.RouteDirection
@@ -58,6 +59,7 @@ data class MapUiState(
 class MapViewModel(
     application: Application,
     private val repository: OasaRepository,
+    private val recentActivityRepository: RecentActivityRepository,
     private val presetRouteCode: String?,
 ) : AndroidViewModel(application) {
 
@@ -100,6 +102,9 @@ class MapViewModel(
 
     fun applyRouteCode() {
         val code = _uiState.value.routeCodeInput.trim().ifBlank { DEFAULT_ROUTE_CODE }
+        viewModelScope.launch {
+            recentActivityRepository.recordRouteVisit(code)
+        }
         _uiState.update {
             it.copy(
                 routeCodeInput = code,
@@ -164,6 +169,9 @@ class MapViewModel(
         val target = routeCode.trim()
         if (target.isEmpty()) return
         if (target == _uiState.value.appliedRouteCode) return
+        viewModelScope.launch {
+            recentActivityRepository.recordRouteVisit(target)
+        }
         _uiState.update {
             it.copy(
                 appliedRouteCode = target,
@@ -302,6 +310,9 @@ class MapViewModel(
                     return@launch
                 }
                 val routeForLive = fetch.effectiveRouteCode
+                viewModelScope.launch {
+                    recentActivityRepository.recordRouteVisit(routeForLive)
+                }
                 _uiState.update {
                     it.copy(
                         stops = fetch.stops,

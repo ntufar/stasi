@@ -3,6 +3,7 @@ package io.github.ntufar.stasi.data.repository
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -12,6 +13,15 @@ private val Context.settingsDataStore by preferencesDataStore(name = "settings")
 
 private val UI_LOCALE = stringPreferencesKey("ui_locale")
 private val ARRIVAL_ALERT_THRESHOLD_MINUTES = intPreferencesKey("arrival_alert_threshold_minutes")
+private val QUIET_HOURS_ENABLED = booleanPreferencesKey("quiet_hours_enabled")
+private val QUIET_HOURS_START_MINUTES = intPreferencesKey("quiet_hours_start_minutes")
+private val QUIET_HOURS_END_MINUTES = intPreferencesKey("quiet_hours_end_minutes")
+
+data class QuietHoursSettings(
+    val enabled: Boolean,
+    val startMinutes: Int,
+    val endMinutes: Int,
+)
 
 class SettingsRepository(
     context: Context,
@@ -32,6 +42,16 @@ class SettingsRepository(
             .coerceIn(ARRIVAL_ALERT_THRESHOLD_MIN, ARRIVAL_ALERT_THRESHOLD_MAX)
     }
 
+    val quietHours: Flow<QuietHoursSettings> = store.data.map { prefs ->
+        QuietHoursSettings(
+            enabled = prefs[QUIET_HOURS_ENABLED] ?: false,
+            startMinutes = (prefs[QUIET_HOURS_START_MINUTES] ?: DEFAULT_QUIET_HOURS_START_MINUTES)
+                .coerceIn(0, 24 * 60 - 1),
+            endMinutes = (prefs[QUIET_HOURS_END_MINUTES] ?: DEFAULT_QUIET_HOURS_END_MINUTES)
+                .coerceIn(0, 24 * 60 - 1),
+        )
+    }
+
     suspend fun setLocaleTag(tag: String) {
         require(tag == LANGUAGE_EN || tag == LANGUAGE_EL)
         store.edit { it[UI_LOCALE] = tag }
@@ -42,6 +62,18 @@ class SettingsRepository(
         store.edit { it[ARRIVAL_ALERT_THRESHOLD_MINUTES] = v }
     }
 
+    suspend fun setQuietHoursEnabled(enabled: Boolean) {
+        store.edit { it[QUIET_HOURS_ENABLED] = enabled }
+    }
+
+    suspend fun setQuietHoursStartMinutes(minutes: Int) {
+        store.edit { it[QUIET_HOURS_START_MINUTES] = minutes.coerceIn(0, 24 * 60 - 1) }
+    }
+
+    suspend fun setQuietHoursEndMinutes(minutes: Int) {
+        store.edit { it[QUIET_HOURS_END_MINUTES] = minutes.coerceIn(0, 24 * 60 - 1) }
+    }
+
     companion object {
         const val LANGUAGE_EN = "en"
         const val LANGUAGE_EL = "el"
@@ -49,6 +81,8 @@ class SettingsRepository(
         const val DEFAULT_ARRIVAL_ALERT_THRESHOLD_MINUTES = 5
         const val ARRIVAL_ALERT_THRESHOLD_MIN = 1
         const val ARRIVAL_ALERT_THRESHOLD_MAX = 30
+        const val DEFAULT_QUIET_HOURS_START_MINUTES = 23 * 60
+        const val DEFAULT_QUIET_HOURS_END_MINUTES = 7 * 60
 
         /** Presets offered in the navigation drawer settings control. */
         val arrivalAlertThresholdChoices: List<Int> = listOf(1, 2, 3, 5, 7, 10, 12, 15, 20, 25, 30)

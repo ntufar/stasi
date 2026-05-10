@@ -2,10 +2,12 @@ package io.github.ntufar.stasi.ui.home
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,22 +17,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +65,16 @@ private fun hasAnyLocationPermission(context: android.content.Context): Boolean 
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
 
+private fun freshnessLabel(context: android.content.Context, lastUpdatedMillis: Long?): String? {
+    val updated = lastUpdatedMillis ?: return null
+    val relative = DateUtils.getRelativeTimeSpanString(
+        updated,
+        System.currentTimeMillis(),
+        DateUtils.MINUTE_IN_MILLIS,
+    )
+    return context.getString(R.string.home_updated_at, relative)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -59,6 +82,7 @@ fun HomeScreen(
     onSearch: () -> Unit,
     onArrivals: (stopCode: String) -> Unit,
     onMapManual: () -> Unit,
+    onOpenRouteMap: (routeCode: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val vm: HomeViewModel = viewModel(
@@ -66,13 +90,20 @@ fun HomeScreen(
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HomeViewModel(container.oasaRepository, container.favoritesRepository) as T
+                    HomeViewModel(
+                        container.oasaRepository,
+                        container.favoritesRepository,
+                        container.recentActivityRepository,
+                    ) as T
             }
         },
     )
     val ui by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
+    var activeMenuStopCode by remember { mutableStateOf<String?>(null) }
+    var renameTarget by remember { mutableStateOf<FavoriteStopCard?>(null) }
+    var renameValue by remember { mutableStateOf("") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -101,6 +132,9 @@ fun HomeScreen(
                 actions = {
                     IconButton(onClick = onOpenMenu) {
                         Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
+                    }
+                    IconButton(onClick = vm::refreshNow) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_refresh))
                     }
                     IconButton(onClick = onSearch) {
                         Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search))
@@ -153,6 +187,72 @@ fun HomeScreen(
                 }
             }
 
+            if (ui.recentStop != null || ui.recentRoute != null) {
+                item {
+                    Text(
+                        stringResource(R.string.home_recent),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
+                ui.recentStop?.let { recent ->
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onArrivals(recent.code) },
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    stringResource(R.string.home_recent_stop),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    recent.title,
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                Text(
+                                    recent.subtitle ?: recent.code,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                ui.recentRoute?.let { recent ->
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpenRouteMap(recent.code) },
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    stringResource(R.string.home_recent_route),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    recent.title,
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                Text(
+                                    recent.subtitle ?: recent.code,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     stringResource(R.string.home_favorites),
@@ -175,18 +275,81 @@ fun HomeScreen(
                 }
             }
             items(ui.favoriteCards, key = { it.stopCode }) { card ->
+                val freshness = freshnessLabel(context, card.lastUpdatedMillis)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onArrivals(card.stopCode) },
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(
-                            card.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    card.alias?.takeIf { it.isNotBlank() } ?: card.title,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                card.alias?.takeIf { it.isNotBlank() }?.let {
+                                    Text(
+                                        card.title,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            Box {
+                                IconButton(onClick = { activeMenuStopCode = card.stopCode }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = null)
+                                }
+                                DropdownMenu(
+                                    expanded = activeMenuStopCode == card.stopCode,
+                                    onDismissRequest = { activeMenuStopCode = null },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.home_favorite_rename)) },
+                                        onClick = {
+                                            renameTarget = card
+                                            renameValue = card.alias.orEmpty()
+                                            activeMenuStopCode = null
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.home_favorite_move_up)) },
+                                        onClick = {
+                                            vm.moveFavorite(card.stopCode, -1)
+                                            activeMenuStopCode = null
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.home_favorite_move_down)) },
+                                        onClick = {
+                                            vm.moveFavorite(card.stopCode, 1)
+                                            activeMenuStopCode = null
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.home_favorite_remove)) },
+                                        onClick = {
+                                            vm.removeFavorite(card.stopCode)
+                                            activeMenuStopCode = null
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        freshness?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                         if (card.arrivals.isEmpty()) {
                             Text(
                                 stringResource(R.string.home_no_arrivals),
@@ -238,5 +401,35 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (renameTarget != null) {
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            title = { Text(stringResource(R.string.home_favorite_rename_title)) },
+            text = {
+                OutlinedTextField(
+                    value = renameValue,
+                    onValueChange = { renameValue = it },
+                    label = { Text(stringResource(R.string.home_favorite_alias_label)) },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        renameTarget?.let { vm.renameFavorite(it.stopCode, renameValue) }
+                        renameTarget = null
+                    },
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameTarget = null }) {
+                    Text(stringResource(R.string.cd_back))
+                }
+            },
+        )
     }
 }

@@ -7,7 +7,9 @@ import io.github.ntufar.stasi.data.local.AppDatabase
 import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
 import io.github.ntufar.stasi.data.repository.SettingsRepository
+import io.github.ntufar.stasi.data.repository.QuietHoursSettings
 import io.github.ntufar.stasi.util.NotificationHelper
+import java.time.LocalTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
@@ -53,6 +55,8 @@ class ArrivalAlertWorker(
 
             try {
                 val threshold = settingsRepository.arrivalAlertThresholdMinutes.first()
+                val quietHours = settingsRepository.quietHours.first()
+                val quietNow = isQuietHoursActive(quietHours, LocalTime.now())
                 val arrivals = oasaRepository.getStopArrivals(stopCode)
                 val hit = arrivals.firstOrNull {
                     it.routeCode == routeCode && it.vehCode == vehCode
@@ -61,7 +65,40 @@ class ArrivalAlertWorker(
                 if (!tracking) {
                     if (hit != null && hit.minutes <= threshold) {
                         tracking = true
-                        val initialPhase = if (hit.minutes <= 0) {
+                        if (!quietNow) {
+                            val initialPhase = if (hit.minutes <= 0) {
+                                NotificationHelper.ArrivalPhase.Arrived
+                            } else {
+                                NotificationHelper.ArrivalPhase.Countdown
+                            }
+                            notificationHelper.showOrUpdateArrivalNotification(
+                                stopCode = stopCode,
+                                routeCode = routeCode,
+                                vehCode = vehCode,
+                                lineLabel = lineLabel,
+                                stopTitle = stopTitle,
+                                phase = initialPhase,
+                                minutes = hit.minutes,
+                            )
+                        }
+                    }
+                } else {
+                    if (hit == null) {
+                        if (!quietNow) {
+                            notificationHelper.showOrUpdateArrivalNotification(
+                                stopCode = stopCode,
+                                routeCode = routeCode,
+                                vehCode = vehCode,
+                                lineLabel = lineLabel,
+                                stopTitle = stopTitle,
+                                phase = NotificationHelper.ArrivalPhase.Departed,
+                            )
+                        }
+                        alertsRepository.removeAlert(stopCode, routeCode, vehCode)
+                        return Result.success()
+                    }
+                    if (!quietNow) {
+                        val phase = if (hit.minutes <= 0) {
                             NotificationHelper.ArrivalPhase.Arrived
                         } else {
                             NotificationHelper.ArrivalPhase.Countdown
@@ -72,37 +109,10 @@ class ArrivalAlertWorker(
                             vehCode = vehCode,
                             lineLabel = lineLabel,
                             stopTitle = stopTitle,
-                            phase = initialPhase,
+                            phase = phase,
                             minutes = hit.minutes,
                         )
                     }
-                } else {
-                    if (hit == null) {
-                        notificationHelper.showOrUpdateArrivalNotification(
-                            stopCode = stopCode,
-                            routeCode = routeCode,
-                            vehCode = vehCode,
-                            lineLabel = lineLabel,
-                            stopTitle = stopTitle,
-                            phase = NotificationHelper.ArrivalPhase.Departed,
-                        )
-                        alertsRepository.removeAlert(stopCode, routeCode, vehCode)
-                        return Result.success()
-                    }
-                    val phase = if (hit.minutes <= 0) {
-                        NotificationHelper.ArrivalPhase.Arrived
-                    } else {
-                        NotificationHelper.ArrivalPhase.Countdown
-                    }
-                    notificationHelper.showOrUpdateArrivalNotification(
-                        stopCode = stopCode,
-                        routeCode = routeCode,
-                        vehCode = vehCode,
-                        lineLabel = lineLabel,
-                        stopTitle = stopTitle,
-                        phase = phase,
-                        minutes = hit.minutes,
-                    )
                 }
             } catch (_: Exception) {
                 // Network failure — keep retrying on next poll
@@ -113,5 +123,18 @@ class ArrivalAlertWorker(
 
         alertsRepository.removeAlert(stopCode, routeCode, vehCode)
         return Result.success()
+    }
+
+    private fun isQuietHoursActive(settings: QuietHoursSettings, now: LocalTime): Boolean {
+        if (!settings.enabled) return false
+        val start = settings.startMinutes
+        val end = settings.endMinutes
+        if (start == end) return false
+        val nowMinutes = now.hour * 60 + now.minute
+        return if (start < end) {
+            nowMinutes in start until end
+        } else {
+            nowMinutes >= start || nowMinutes < end
+        }
     }
 }

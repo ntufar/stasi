@@ -52,6 +52,9 @@ interface StasiDao {
     )
     suspend fun arrivalsFresh(stopCode: String, minTime: Long): List<ArrivalCacheEntity>
 
+    @Query("SELECT MAX(fetchedAtMillis) FROM arrival_cache WHERE stopCode = :stopCode")
+    suspend fun latestArrivalFetch(stopCode: String): Long?
+
     @Query("SELECT * FROM cached_lines WHERE lineCode = :lineCode LIMIT 1")
     suspend fun lineByCode(lineCode: String): CachedLineEntity?
 

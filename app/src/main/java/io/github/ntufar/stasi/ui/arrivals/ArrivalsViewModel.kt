@@ -11,6 +11,7 @@ import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.ArrivalDetail
 import io.github.ntufar.stasi.data.repository.FavoritesRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.data.repository.RecentActivityRepository
 import io.github.ntufar.stasi.workers.ArrivalAlertWorker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,6 +26,7 @@ data class ArrivalsUiState(
     val stopCode: String,
     val title: String = "",
     val arrivals: List<ArrivalDetail> = emptyList(),
+    val lastUpdatedMillis: Long? = null,
     val isFavorite: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -36,6 +38,7 @@ class ArrivalsViewModel(
     private val repository: OasaRepository,
     private val favoritesRepository: FavoritesRepository,
     private val alertsRepository: AlertsRepository,
+    private val recentActivityRepository: RecentActivityRepository,
     private val appContext: Context,
 ) : ViewModel() {
 
@@ -45,6 +48,9 @@ class ArrivalsViewModel(
     private var pollJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            recentActivityRepository.recordStopVisit(stopCode)
+        }
         pollJob = viewModelScope.launch {
             while (isActive) {
                 fetchOnce()
@@ -105,7 +111,8 @@ class ArrivalsViewModel(
     private suspend fun fetchOnce() {
         runCatching {
             val title = repository.getStopLabel(stopCode)
-            val raw = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
+            val snapshot = repository.getStopArrivalsSnapshot(stopCode)
+            val raw = snapshot.arrivals.sortedBy { it.minutes }
             val withSchedule = repository.enrichArrivalsWithOriginSchedule(stopCode, raw)
             val withBoardings = repository.enrichArrivalsWithOriginBoardings(stopCode, withSchedule)
             val arrivals = repository.enrichArrivalsWithLastBusWarning(withBoardings)
@@ -114,6 +121,7 @@ class ArrivalsViewModel(
                 it.copy(
                     title = title,
                     arrivals = arrivals,
+                    lastUpdatedMillis = snapshot.fetchedAtMillis,
                     isFavorite = fav,
                     isLoading = false,
                     error = null,

@@ -1,6 +1,8 @@
 package io.github.ntufar.stasi
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.github.ntufar.stasi.data.repository.SettingsRepository
+import io.github.ntufar.stasi.data.repository.QuietHoursSettings
 import io.github.ntufar.stasi.di.LocalAppContainer
 import io.github.ntufar.stasi.ui.arrivals.ArrivalsScreen
 import io.github.ntufar.stasi.ui.home.HomeScreen
@@ -42,7 +46,7 @@ import io.github.ntufar.stasi.ui.search.SearchScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun StasiApp() {
+fun StasiApp(initialStopCode: String? = null) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -52,6 +56,13 @@ fun StasiApp() {
     )
     val alertThresholdMinutes by container.settingsRepository.arrivalAlertThresholdMinutes.collectAsStateWithLifecycle(
         initialValue = SettingsRepository.DEFAULT_ARRIVAL_ALERT_THRESHOLD_MINUTES,
+    )
+    val quietHours by container.settingsRepository.quietHours.collectAsStateWithLifecycle(
+        initialValue = QuietHoursSettings(
+            enabled = false,
+            startMinutes = SettingsRepository.DEFAULT_QUIET_HOURS_START_MINUTES,
+            endMinutes = SettingsRepository.DEFAULT_QUIET_HOURS_END_MINUTES,
+        ),
     )
 
     val openDrawer: () -> Unit = remember(scope, drawerState) {
@@ -66,6 +77,14 @@ fun StasiApp() {
     // Map panning uses horizontal drags; drawer edge-swipe would steal rightward pans.
     val drawerSwipeGesturesEnabled =
         currentRoute != "map_manual" && currentRoute?.startsWith("map/") != true
+
+    LaunchedEffect(initialStopCode) {
+        val stop = initialStopCode?.trim().orEmpty()
+        if (stop.isBlank()) return@LaunchedEffect
+        navController.navigate("arrivals/$stop") {
+            launchSingleTop = true
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -137,6 +156,10 @@ fun StasiApp() {
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
                 )
                 var thresholdMenuExpanded by remember { mutableStateOf(false) }
+                var quietHoursEnabledMenuExpanded by remember { mutableStateOf(false) }
+                var quietStartMenuExpanded by remember { mutableStateOf(false) }
+                var quietEndMenuExpanded by remember { mutableStateOf(false) }
+                val quietHourChoices = remember { (0..23).toList() }
                 Text(
                     stringResource(R.string.settings_arrival_alert_threshold_label),
                     style = MaterialTheme.typography.bodySmall,
@@ -168,6 +191,106 @@ fun StasiApp() {
                                     }
                                 },
                             )
+                        }
+                    }
+                }
+                Text(
+                    stringResource(R.string.settings_quiet_hours_heading),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                )
+                TextButton(
+                    onClick = { quietHoursEnabledMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (quietHours.enabled) {
+                            stringResource(R.string.settings_quiet_hours_on)
+                        } else {
+                            stringResource(R.string.settings_quiet_hours_off)
+                        },
+                    )
+                }
+                DropdownMenu(
+                    expanded = quietHoursEnabledMenuExpanded,
+                    onDismissRequest = { quietHoursEnabledMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_quiet_hours_on)) },
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.setQuietHoursEnabled(true)
+                                quietHoursEnabledMenuExpanded = false
+                            }
+                            Unit
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_quiet_hours_off)) },
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.setQuietHoursEnabled(false)
+                                quietHoursEnabledMenuExpanded = false
+                            }
+                            Unit
+                        },
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        TextButton(
+                            onClick = { quietStartMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.settings_quiet_hours_start_value, quietHours.startMinutes / 60))
+                        }
+                        DropdownMenu(
+                            expanded = quietStartMenuExpanded,
+                            onDismissRequest = { quietStartMenuExpanded = false },
+                        ) {
+                            quietHourChoices.forEach { hour ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.settings_hour_value, hour)) },
+                                    onClick = {
+                                        scope.launch {
+                                            container.settingsRepository.setQuietHoursStartMinutes(hour * 60)
+                                            quietStartMenuExpanded = false
+                                        }
+                                        Unit
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        TextButton(
+                            onClick = { quietEndMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.settings_quiet_hours_end_value, quietHours.endMinutes / 60))
+                        }
+                        DropdownMenu(
+                            expanded = quietEndMenuExpanded,
+                            onDismissRequest = { quietEndMenuExpanded = false },
+                        ) {
+                            quietHourChoices.forEach { hour ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.settings_hour_value, hour)) },
+                                    onClick = {
+                                        scope.launch {
+                                            container.settingsRepository.setQuietHoursEndMinutes(hour * 60)
+                                            quietEndMenuExpanded = false
+                                        }
+                                        Unit
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -216,9 +339,16 @@ fun StasiApp() {
                         }
                     },
                     onArrivals = { stopCode ->
+                        scope.launch { container.recentActivityRepository.recordStopVisit(stopCode) }
                         navController.navigate("arrivals/$stopCode")
                     },
                     onMapManual = { navController.navigate("map_manual") },
+                    onOpenRouteMap = { routeCode ->
+                        scope.launch { container.recentActivityRepository.recordRouteVisit(routeCode) }
+                        navController.navigate("map/$routeCode") {
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable("search") {
@@ -226,11 +356,13 @@ fun StasiApp() {
                     onOpenMenu = openDrawer,
                     onBack = { navController.popBackStack() },
                     onStopSelected = { stopCode ->
+                        scope.launch { container.recentActivityRepository.recordStopVisit(stopCode) }
                         navController.navigate("arrivals/$stopCode") {
                             launchSingleTop = true
                         }
                     },
                     onOpenLineOnMap = { routeCode ->
+                        scope.launch { container.recentActivityRepository.recordRouteVisit(routeCode) }
                         navController.navigate("map/$routeCode") {
                             launchSingleTop = true
                         }
@@ -249,6 +381,7 @@ fun StasiApp() {
                     stopCode = stopCode,
                     onBack = { navController.popBackStack() },
                     onOpenMap = { routeCode ->
+                        scope.launch { container.recentActivityRepository.recordRouteVisit(routeCode) }
                         navController.navigate("map/$routeCode") {
                             launchSingleTop = true
                         }
@@ -261,6 +394,7 @@ fun StasiApp() {
                     onOpenMenu = openDrawer,
                     onBack = { navController.popBackStack() },
                     onStopSelected = { stopCode ->
+                        scope.launch { container.recentActivityRepository.recordStopVisit(stopCode) }
                         navController.navigate("arrivals/$stopCode") {
                             launchSingleTop = true
                         }
@@ -279,6 +413,7 @@ fun StasiApp() {
                     onOpenMenu = openDrawer,
                     onBack = { navController.popBackStack() },
                     onStopSelected = { stopCode ->
+                        scope.launch { container.recentActivityRepository.recordStopVisit(stopCode) }
                         navController.navigate("arrivals/$stopCode") {
                             launchSingleTop = true
                         }

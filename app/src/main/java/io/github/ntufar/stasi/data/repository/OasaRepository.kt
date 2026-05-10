@@ -106,6 +106,11 @@ data class ArrivalDetail(
     val isLastBusWarning: Boolean = false,
 )
 
+data class ArrivalSnapshot(
+    val arrivals: List<ArrivalDetail>,
+    val fetchedAtMillis: Long?,
+)
+
 data class NearbyStop(
     val stopCode: String,
     val description: String,
@@ -442,7 +447,7 @@ class OasaRepository(
         }
     }
 
-    suspend fun getStopArrivals(stopCode: String): List<ArrivalDetail> {
+    suspend fun getStopArrivalsSnapshot(stopCode: String): ArrivalSnapshot {
         val now = System.currentTimeMillis()
         val minFresh = now - ARRIVAL_CACHE_MS
         val cached = try {
@@ -451,12 +456,18 @@ class OasaRepository(
             emptyList()
         }
         if (cached.isNotEmpty()) {
-            return cached.map { it.toDetail() }
+            return ArrivalSnapshot(
+                arrivals = cached.map { it.toDetail() },
+                fetchedAtMillis = cached.maxOfOrNull { it.fetchedAtMillis },
+            )
         }
-        return fetchAndCacheArrivals(stopCode, now)
+        return fetchAndCacheArrivalsSnapshot(stopCode, now)
     }
 
-    private suspend fun fetchAndCacheArrivals(stopCode: String, now: Long): List<ArrivalDetail> {
+    suspend fun getStopArrivals(stopCode: String): List<ArrivalDetail> =
+        getStopArrivalsSnapshot(stopCode).arrivals
+
+    private suspend fun fetchAndCacheArrivalsSnapshot(stopCode: String, now: Long): ArrivalSnapshot {
         return try {
             val routesAtStop = try {
                 limiter.run(EndpointRateLimiter.EP_WEB_ROUTES_FOR_STOP) {
@@ -470,14 +481,17 @@ class OasaRepository(
             }
             val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now, routesAtStop) }
             dao.replaceArrivals(stopCode, rows)
-            rows.map { it.toDetail() }
+            ArrivalSnapshot(arrivals = rows.map { it.toDetail() }, fetchedAtMillis = now)
         } catch (_: Exception) {
             val stale = try {
                 dao.arrivalsFresh(stopCode, 0L)
             } catch (_: Exception) {
                 emptyList()
             }
-            stale.map { it.toDetail() }
+            ArrivalSnapshot(
+                arrivals = stale.map { it.toDetail() },
+                fetchedAtMillis = try { dao.latestArrivalFetch(stopCode) } catch (_: Exception) { null },
+            )
         }
     }
 

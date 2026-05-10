@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.20 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.21 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -15,8 +15,11 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 
 ## 3. Core Features (MVP)
 1. Home screen with favorite stops, showing next 2 arrivals per stop live
+   - favorites support local aliases and manual ordering
+   - recently viewed stop/route shortcuts appear at the top of Home
 2. Search stops and lines by name, Greek fuzzy match (ignores accents)
 3. Arrivals screen: big minutes, line ID, destination; optional **origin departure** line when the stop is not that route’s first stop (see item 7)
+   - shows a freshness stamp for the last arrivals fetch
 4. Nearby stops using GPS, sorted by distance
 5. Route map: draw **all route stops** on the map (not only the polyline), with **clear direction of travel**:
    - **Tabs** when a route has loaded: **Map** / **Timetable** (EN) or **Χάρτης** / **Δρομολόγια** (EL) — daily timetable from OASA `getDailySchedule` using the line’s internal `line_code`; origin (**Αφετηρία** / `come`) and terminus (**Τέρμα** / `go`) appear as **two columns on the same row** so outbound and return time bands are visible together; shorter lists pad with “—” on the missing side;
@@ -43,6 +46,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
     - **Content intent:** `MainActivity` with `navigate_to_stop` extra = stop code (for opening the right stop; **navigation must consume this extra** in the Compose layer to land on Arrivals—intent is prepared for deep link).
     - **Persistence:** active alert keys live in a separate **Preferences DataStore** (`arrival_alerts`, string set); `ArrivalsViewModel` collects `activeAlerts` filtered by current `stopCode` to drive icon state. Cancelling work clears via `cancelUniqueWork` + repository remove.
     - **Foreground list:** while Arrivals is visible, the screen also **refreshes arrivals every 30 seconds** and **on each `RESUMED`** lifecycle (`refreshNow`), independent of the worker.
+    - **Quiet hours:** when enabled in Settings, alert notifications are suppressed during the configured local time window while the alert remains active until the bus leaves or the worker times out.
     - Privacy: **no push server**, no accounts — local notifications + on-device polling + DataStore only.
 
 ## 4. Out of Scope for MVP
@@ -54,7 +58,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 - UI: Jetpack Compose + Material 3
 - Architecture: MVVM, Repository pattern
 - Networking: Retrofit2 + Gson, Coroutines
-- Storage: Room for cache; DataStore for **favorites + UI language + arrival alert threshold minutes** (`SettingsRepository` / `settings` preferences) and **active arrival alerts** (`AlertsRepository`, `arrival_alerts` preferences file)
+- Storage: Room for cache; DataStore for **favorites + UI language + arrival alert threshold minutes + quiet hours** (`SettingsRepository` / `settings` preferences), **recent activity** (`RecentActivityRepository`, `recent_activity` preferences), and **active arrival alerts** (`AlertsRepository`, `arrival_alerts` preferences file)
 - Background: **WorkManager** for arrival alert polling (`ArrivalAlertWorker`)
 - Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`)
 - Maps: MapLibre SDK (open source, no API key)
@@ -106,9 +110,13 @@ io.github.ntufar.stasi/
 
 ## 9. UI Flows
 Any main screen → **menu icon** → drawer → Home / Search / Route map, **Settings** (dropdown: minutes within which the first arrival notification is shown; default **5**, allowed **1–30** from presets), or **Language** (English / Greek). On **Route map**, open the drawer via **menu** only (no edge-swipe), so map gestures stay uninterrupted.
+The drawer also exposes **quiet hours** controls for arrival alerts.
 Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
+Home → recent stop/route cards jump back to the last viewed stop or route
 Arrivals → **alerts icon** on a live row → optional **POST_NOTIFICATIONS** grant (Android 13+) → **WorkManager** poll until the bus is gone from live data or 30 min timeout → **local notification** that updates (countdown → arrived → left); tap again (or cancel path) to clear alert and worker
+Arrivals/Home → refresh action immediately reloads arrivals and updates the freshness stamp
+Home → favorite card overflow menu supports rename / move up / move down / remove
 Arrivals → map icon → MapScreen with route polyline
 MapScreen → **tabs** — **Χάρτης** (map) / **Δρομολόγια** (timetable from `getDailySchedule` when line code is known); tabs appear once route stops have loaded successfully
 MapScreen (manual, no line yet) → map shows **nearby stop pins** from `getClosestStops` when location is available; tap pin → Arrivals
@@ -153,12 +161,14 @@ Design rules:
 - App works airplane mode after first load for cached stops
 - Drawer opens from menu icon; choosing a top-level destination preserves reasonable back stack behavior (`popUpTo` start destination with state save/restore)
 - Switching language updates UI immediately (activity recreate); choice survives app restart
+- Home shows recent stop/route shortcuts and favorite cards can be renamed or reordered without leaving the screen
+- Arrival cards and Home favorites show a last-updated freshness label after each successful fetch
 - On Arrivals, user can enable an alert on a live row (with `routeCode` + `vehCode`); within **30 minutes** either the worker shows an updating notification from **≤ threshold minutes** (Settings, default 5) through **arrived** until **that vehicle drops off** the stop’s live list (then “bus has left” copy), or the alert clears without notification if the threshold is never reached
+- Quiet hours suppress alert notifications while keeping the alert active until the configured window ends or the bus departs
 - Android 13+: denying notification permission leaves the alert off after the permission flow; granting it schedules the worker as above
 - Active alert rows show the **filled** notifications icon; tapping again cancels WorkManager unique work and removes the key from DataStore
 
 ## 14. Next Steps for Development
-1. Implement OasaRepository with caching
-2. Build HomeScreen with DataStore favorites
-3. Add SearchScreen with fuzzy Greek
-4. Integrate MapLibre and draw route
+1. Add automated tests for favorites ordering/alias storage and quiet-hours alert suppression
+2. Consider per-favorite alert presets if future UX work needs stop-specific defaults
+3. Revisit route/stop deep-link handling for any additional notification entry points

@@ -1,8 +1,10 @@
 package io.github.ntufar.stasi.ui.arrivals
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -19,16 +21,22 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,8 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import io.github.ntufar.stasi.R
 import androidx.compose.ui.unit.dp
@@ -58,6 +68,83 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.di.LocalAppContainer
+import android.widget.Toast
+
+private fun freshnessLabel(context: android.content.Context, lastUpdatedMillis: Long?): String? {
+    val updated = lastUpdatedMillis ?: return null
+    val relative = DateUtils.getRelativeTimeSpanString(
+        updated,
+        System.currentTimeMillis(),
+        DateUtils.MINUTE_IN_MILLIS,
+    )
+    return context.getString(R.string.arrivals_updated_at, relative)
+}
+
+private fun shareMinutes(context: android.content.Context, minutes: Int): String =
+    if (minutes >= 999) {
+        context.getString(R.string.arrivals_share_minutes_unknown)
+    } else {
+        context.getString(R.string.minutes_short, minutes)
+    }
+
+private fun buildArrivalsShareText(
+    context: android.content.Context,
+    stopTitle: String,
+    stopCode: String,
+    lastUpdatedMillis: Long?,
+    arrivals: List<io.github.ntufar.stasi.data.repository.ArrivalDetail>,
+): String {
+    val lines = mutableListOf<String>()
+    lines += context.getString(R.string.arrivals_share_heading, stopTitle, stopCode)
+    freshnessLabel(context, lastUpdatedMillis)?.let { lines += it }
+    if (arrivals.isEmpty()) {
+        lines += context.getString(R.string.arrivals_share_no_arrivals)
+    } else {
+        lines += context.getString(R.string.arrivals_share_next_arrivals)
+        arrivals.take(3).forEachIndexed { index, arrival ->
+            val minutes = shareMinutes(context, arrival.minutes)
+            val fromOrigin = arrival.originDepartureMinutes?.let { om ->
+                if (om >= 999) null else context.getString(R.string.arrivals_share_from_origin, shareMinutes(context, om))
+            }
+            val builder = StringBuilder()
+                .append(index + 1)
+                .append(". ")
+                .append(minutes)
+                .append(" · ")
+                .append(arrival.lineLabel)
+                .append(" → ")
+                .append(arrival.destinationLabel)
+            if (!fromOrigin.isNullOrBlank()) {
+                builder.append(" | ").append(fromOrigin)
+            }
+            lines += builder.toString()
+        }
+    }
+    lines += context.getString(R.string.arrivals_share_deep_link, buildStopDeepLink(stopCode))
+    return lines.joinToString("\n")
+}
+
+private fun buildStopDeepLink(stopCode: String): String =
+    "stasi://stop/${stopCode.trim()}"
+
+private fun buildConciseSummaryText(
+    context: android.content.Context,
+    stopTitle: String,
+    stopCode: String,
+    arrivals: List<io.github.ntufar.stasi.data.repository.ArrivalDetail>,
+): String {
+    val lines = mutableListOf<String>()
+    lines += context.getString(R.string.arrivals_share_heading, stopTitle, stopCode)
+    if (arrivals.isEmpty()) {
+        lines += context.getString(R.string.arrivals_share_no_arrivals)
+    } else {
+        arrivals.take(2).forEach { arrival ->
+            val minutes = shareMinutes(context, arrival.minutes)
+            lines += "${minutes} · ${arrival.lineLabel} → ${arrival.destinationLabel}"
+        }
+    }
+    return lines.joinToString("\n")
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +167,7 @@ fun ArrivalsScreen(
                         container.oasaRepository,
                         container.favoritesRepository,
                         container.alertsRepository,
+                        container.recentActivityRepository,
                         context.applicationContext,
                     ) as T
             }
@@ -90,6 +178,7 @@ fun ArrivalsScreen(
     val mapRouteCode = remember(ui.arrivals) {
         ui.arrivals.firstOrNull { it.routeCode.isNotBlank() }?.routeCode
     }
+    val clipboard = LocalClipboardManager.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(vm, lifecycleOwner) {
@@ -137,6 +226,62 @@ fun ArrivalsScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = vm::refreshNow) {
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_refresh))
+                    }
+                    IconButton(
+                        onClick = {
+                            val stopTitle = ui.title.ifBlank { stopCode }
+                            val text = buildArrivalsShareText(
+                                context = context,
+                                stopTitle = stopTitle,
+                                stopCode = stopCode,
+                                lastUpdatedMillis = ui.lastUpdatedMillis,
+                                arrivals = ui.arrivals,
+                            )
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(
+                                            Intent.EXTRA_SUBJECT,
+                                            context.getString(R.string.arrivals_share_subject, stopTitle),
+                                        )
+                                        putExtra(Intent.EXTRA_TEXT, text)
+                                    },
+                                    context.getString(R.string.arrivals_share_chooser),
+                                ),
+                            )
+                        },
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share))
+                    }
+                    IconButton(
+                        onClick = {
+                            val stopTitle = ui.title.ifBlank { stopCode }
+                            clipboard.setText(
+                                AnnotatedString(
+                                    buildConciseSummaryText(
+                                        context = context,
+                                        stopTitle = stopTitle,
+                                        stopCode = stopCode,
+                                        arrivals = ui.arrivals,
+                                    ),
+                                ),
+                            )
+                            Toast.makeText(context, context.getString(R.string.arrivals_copied_summary), Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.cd_copy_summary))
+                    }
+                    IconButton(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(buildStopDeepLink(stopCode)))
+                            Toast.makeText(context, context.getString(R.string.arrivals_copied_link), Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        Icon(Icons.Default.Link, contentDescription = stringResource(R.string.cd_copy_link))
+                    }
                     IconButton(onClick = onOpenMenu) {
                         Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
@@ -165,10 +310,20 @@ fun ArrivalsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-            ) {
-                items(
-                    listRows,
-                    key = { row ->
+                ) {
+                    item {
+                        freshnessLabel(context, ui.lastUpdatedMillis)?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            )
+                        }
+                    }
+                    items(
+                        listRows,
+                        key = { row ->
                         when (row) {
                             is ArrivalListRow.Live ->
                                 "live-${row.detail.routeCode}-${row.detail.vehCode}-${row.detail.minutes}"

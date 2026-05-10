@@ -7,6 +7,11 @@
     <string name="cd_map">Χάρτης</string>
     <string name="cd_back">Πίσω</string>
     <string name="cd_favorite">Αγαπημένο</string>
+    <string name="cd_refresh">Ανανέωση</string>
+    <string name="cd_share">Κοινή χρήση</string>
+    <string name="cd_copy_summary">Αντιγραφή σύνοψης</string>
+    <string name="cd_copy_link">Αντιγραφή συνδέσμου</string>
+    <string name="cd_link">Σύνδεσμος</string>
     <string name="cd_swap_direction">Αλλαγή κατεύθυνσης</string>
     <string name="cd_my_location">Τρέχουσα τοποθεσία</string>
     <string name="cd_alert">Ειδοποίηση άφιξης</string>
@@ -16,6 +21,12 @@
     <string name="nav_map">Χάρτης διαδρομής</string>
     <string name="settings_heading">Ρυθμίσεις</string>
     <string name="settings_arrival_alert_threshold_label">Έναρξη ειδοποίησης άφιξης όταν το λεωφορείο είναι εντός</string>
+    <string name="settings_quiet_hours_heading">Ώρες ησυχίας</string>
+    <string name="settings_quiet_hours_on">Ενεργό</string>
+    <string name="settings_quiet_hours_off">Ανενεργό</string>
+    <string name="settings_quiet_hours_start_value">Έναρξη: %1$02d:00</string>
+    <string name="settings_quiet_hours_end_value">Λήξη: %1$02d:00</string>
+    <string name="settings_hour_value">%1$02d:00</string>
 
     <string name="language_heading">Γλώσσα</string>
     <string name="language_english">Αγγλικά</string>
@@ -23,9 +34,19 @@
 
     <string name="home_nearby_stops">Κοντινές στάσεις</string>
     <string name="home_location_button">Τοποθεσία (GPS)</string>
+    <string name="home_recent">Συνέχεια</string>
+    <string name="home_recent_stop">Πρόσφατη στάση</string>
+    <string name="home_recent_route">Πρόσφατη διαδρομή</string>
+    <string name="home_updated_at">Ενημερώθηκε πριν από %1$s</string>
     <string name="home_favorites">Αγαπημένες στάσεις</string>
     <string name="home_favorites_empty">Δεν έχεις ακόμα αγαπημένες. Πρόσθεσε από την οθόνη αφίξεων (εικονίδιο αστεριού).</string>
     <string name="home_no_arrivals">Δεν υπάρχουν δεδομένα αφίξεων.</string>
+    <string name="home_favorite_rename">Μετονομασία</string>
+    <string name="home_favorite_move_up">Μετακίνηση πάνω</string>
+    <string name="home_favorite_move_down">Μετακίνηση κάτω</string>
+    <string name="home_favorite_remove">Αφαίρεση</string>
+    <string name="home_favorite_rename_title">Μετονομασία αγαπημένης</string>
+    <string name="home_favorite_alias_label">Τοπικό όνομα</string>
     <string name="minutes_short">%1$d΄</string>
 
     <string name="search_title">Αναζήτηση</string>
@@ -39,6 +60,17 @@
 
     <string name="arrivals_last_service_warning">Τελευταίο</string>
     <string name="timetable_last_service_warning">Τελευταίο δρομολόγιο σύντομα</string>
+    <string name="arrivals_updated_at">Ενημερώθηκε πριν από %1$s</string>
+    <string name="arrivals_share_subject">Αφίξεις στη στάση %1$s</string>
+    <string name="arrivals_share_chooser">Κοινή χρήση στάσης</string>
+    <string name="arrivals_share_heading">%1$s (%2$s)</string>
+    <string name="arrivals_share_next_arrivals">Επόμενες αφίξεις:</string>
+    <string name="arrivals_share_no_arrivals">Δεν υπάρχουν τρέχουσες αφίξεις.</string>
+    <string name="arrivals_share_from_origin">από αφετηρία σε %1$s</string>
+    <string name="arrivals_share_deep_link">Άνοιγμα συνδέσμου: %1$s</string>
+    <string name="arrivals_share_minutes_unknown">--</string>
+    <string name="arrivals_copied_summary">Η σύνοψη αντιγράφηκε</string>
+    <string name="arrivals_copied_link">Ο σύνδεσμος αντιγράφηκε</string>
     <string name="arrivals_from_origin_minutes">Από αφετηρία%1$s: %2$s</string>
     <string name="arrivals_schedule_from_origin">Δρομολόγιο από αφετηρία%1$s</string>
     <string name="arrivals_traffic_approx_less_than">σε &lt;1΄</string>
