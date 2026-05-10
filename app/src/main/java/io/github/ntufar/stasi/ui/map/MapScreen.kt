@@ -763,26 +763,8 @@ private fun StasiMapLibre(
             return@LaunchedEffect
         }
 
-        val ul = userLatLng
-        if (ul != null) {
-            map.easeCamera(
-                CameraUpdateFactory.newLatLngZoom(LatLng(ul.first, ul.second), 15.0),
-                500,
-            )
-            initialCameraDoneForRoute = true
-            return@LaunchedEffect
-        }
-        delay(700)
-        if (initialCameraDoneForRoute) return@LaunchedEffect
-        val ulLate = userLatLngState.value
-        if (ulLate != null) {
-            map.easeCamera(
-                CameraUpdateFactory.newLatLngZoom(LatLng(ulLate.first, ulLate.second), 15.0),
-                500,
-            )
-        } else {
-            fitCameraToRoute(map, stops)
-        }
+        // OASA route loaded: frame the full line, not the user's location (FAB still fits both).
+        fitCameraToRoute(map, stops)
         initialCameraDoneForRoute = true
     }
 
