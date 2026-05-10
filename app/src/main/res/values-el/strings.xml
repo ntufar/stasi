@@ -12,6 +12,7 @@
     <string name="cd_copy_summary">Αντιγραφή σύνοψης</string>
     <string name="cd_copy_link">Αντιγραφή συνδέσμου</string>
     <string name="cd_link">Σύνδεσμος</string>
+    <string name="cd_more_actions">Περισσότερες ενέργειες</string>
     <string name="cd_swap_direction">Αλλαγή κατεύθυνσης</string>
     <string name="cd_my_location">Τρέχουσα τοποθεσία</string>
     <string name="cd_alert">Ειδοποίηση άφιξης</string>
@@ -71,6 +72,9 @@
     <string name="arrivals_share_minutes_unknown">--</string>
     <string name="arrivals_copied_summary">Η σύνοψη αντιγράφηκε</string>
     <string name="arrivals_copied_link">Ο σύνδεσμος αντιγράφηκε</string>
+    <string name="arrivals_action_share">Κοινή χρήση αφίξεων</string>
+    <string name="arrivals_action_copy_summary">Αντιγραφή σύντομης σύνοψης</string>
+    <string name="arrivals_action_copy_link">Αντιγραφή βαθιού συνδέσμου</string>
     <string name="arrivals_from_origin_minutes">Από αφετηρία%1$s: %2$s</string>
     <string name="arrivals_schedule_from_origin">Δρομολόγιο από αφετηρία%1$s</string>
     <string name="arrivals_traffic_approx_less_than">σε &lt;1΄</string>

@@ -27,13 +27,15 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
@@ -188,6 +190,7 @@ fun ArrivalsScreen(
     }
 
     var pendingAlertArgs by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var actionsMenuExpanded by remember { mutableStateOf(false) }
     val notifPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -229,59 +232,6 @@ fun ArrivalsScreen(
                     IconButton(onClick = vm::refreshNow) {
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_refresh))
                     }
-                    IconButton(
-                        onClick = {
-                            val stopTitle = ui.title.ifBlank { stopCode }
-                            val text = buildArrivalsShareText(
-                                context = context,
-                                stopTitle = stopTitle,
-                                stopCode = stopCode,
-                                lastUpdatedMillis = ui.lastUpdatedMillis,
-                                arrivals = ui.arrivals,
-                            )
-                            context.startActivity(
-                                Intent.createChooser(
-                                    Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_SUBJECT,
-                                            context.getString(R.string.arrivals_share_subject, stopTitle),
-                                        )
-                                        putExtra(Intent.EXTRA_TEXT, text)
-                                    },
-                                    context.getString(R.string.arrivals_share_chooser),
-                                ),
-                            )
-                        },
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share))
-                    }
-                    IconButton(
-                        onClick = {
-                            val stopTitle = ui.title.ifBlank { stopCode }
-                            clipboard.setText(
-                                AnnotatedString(
-                                    buildConciseSummaryText(
-                                        context = context,
-                                        stopTitle = stopTitle,
-                                        stopCode = stopCode,
-                                        arrivals = ui.arrivals,
-                                    ),
-                                ),
-                            )
-                            Toast.makeText(context, context.getString(R.string.arrivals_copied_summary), Toast.LENGTH_SHORT).show()
-                        },
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.cd_copy_summary))
-                    }
-                    IconButton(
-                        onClick = {
-                            clipboard.setText(AnnotatedString(buildStopDeepLink(stopCode)))
-                            Toast.makeText(context, context.getString(R.string.arrivals_copied_link), Toast.LENGTH_SHORT).show()
-                        },
-                    ) {
-                        Icon(Icons.Default.Link, contentDescription = stringResource(R.string.cd_copy_link))
-                    }
                     IconButton(onClick = onOpenMenu) {
                         Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
@@ -298,6 +248,75 @@ fun ArrivalsScreen(
                         enabled = mapRouteCode != null,
                     ) {
                         Icon(Icons.Default.Map, contentDescription = stringResource(R.string.cd_map))
+                    }
+                    IconButton(onClick = { actionsMenuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_actions))
+                    }
+                    DropdownMenu(
+                        expanded = actionsMenuExpanded,
+                        onDismissRequest = { actionsMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.arrivals_action_share)) },
+                            onClick = {
+                                actionsMenuExpanded = false
+                                val stopTitle = ui.title.ifBlank { stopCode }
+                                val text = buildArrivalsShareText(
+                                    context = context,
+                                    stopTitle = stopTitle,
+                                    stopCode = stopCode,
+                                    lastUpdatedMillis = ui.lastUpdatedMillis,
+                                    arrivals = ui.arrivals,
+                                )
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(
+                                                Intent.EXTRA_SUBJECT,
+                                                context.getString(R.string.arrivals_share_subject, stopTitle),
+                                            )
+                                            putExtra(Intent.EXTRA_TEXT, text)
+                                        },
+                                        context.getString(R.string.arrivals_share_chooser),
+                                    ),
+                                )
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.arrivals_action_copy_summary)) },
+                            onClick = {
+                                actionsMenuExpanded = false
+                                val stopTitle = ui.title.ifBlank { stopCode }
+                                clipboard.setText(
+                                    AnnotatedString(
+                                        buildConciseSummaryText(
+                                            context = context,
+                                            stopTitle = stopTitle,
+                                            stopCode = stopCode,
+                                            arrivals = ui.arrivals,
+                                        ),
+                                    ),
+                                )
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.arrivals_copied_summary),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.arrivals_action_copy_link)) },
+                            onClick = {
+                                actionsMenuExpanded = false
+                                clipboard.setText(AnnotatedString(buildStopDeepLink(stopCode)))
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.arrivals_copied_link),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                        )
                     }
                 },
             )

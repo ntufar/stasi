@@ -12,6 +12,7 @@
     <string name="cd_copy_summary">Copy summary</string>
     <string name="cd_copy_link">Copy link</string>
     <string name="cd_link">Link</string>
+    <string name="cd_more_actions">More actions</string>
     <string name="cd_swap_direction">Switch direction</string>
     <string name="cd_my_location">My location</string>
     <string name="cd_alert">Set arrival alert</string>
@@ -71,6 +72,9 @@
     <string name="arrivals_share_minutes_unknown">--</string>
     <string name="arrivals_copied_summary">Summary copied</string>
     <string name="arrivals_copied_link">Link copied</string>
+    <string name="arrivals_action_share">Share arrivals snapshot</string>
+    <string name="arrivals_action_copy_summary">Copy concise summary</string>
+    <string name="arrivals_action_copy_link">Copy deep link</string>
     <string name="arrivals_from_origin_minutes">From origin%1$s: %2$s</string>
     <string name="arrivals_schedule_from_origin">Scheduled departure from origin%1$s</string>
     <string name="arrivals_traffic_approx_less_than">in &lt;1 min</string>
