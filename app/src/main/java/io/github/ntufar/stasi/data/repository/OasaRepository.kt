@@ -19,7 +19,13 @@ import io.github.ntufar.stasi.data.util.EndpointRateLimiter
 import io.github.ntufar.stasi.data.util.lineSearchNorm
 import io.github.ntufar.stasi.data.util.normalizeGreek
 import io.github.ntufar.stasi.data.util.stopSearchNorm
+import io.github.ntufar.stasi.data.util.ARRIVAL_MINUTES_UNKNOWN
 import io.github.ntufar.stasi.data.util.parseArrivalMinutes
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.CancellationException
 
 /** Broad catch blocks must not swallow this or [withTimeout] / cancel never completes correctly. */
@@ -89,9 +95,13 @@ data class ArrivalDetail(
     /**
      * When this stop is not the route's first stop, minutes until the next vehicle on [routeCode]
      * is expected to depart from that route's origin (first stop in order).
+     * Prefer [originScheduleClock] + schedule-derived minutes from [getDailySchedule]; otherwise live
+     * boardings at the origin stop ([enrichArrivalsWithOriginBoardings]).
      */
     val originDepartureMinutes: Int? = null,
     val originStopDescription: String? = null,
+    /** Next scheduled origin departure wall clock (Europe/Athens) from `come` windows when known. */
+    val originScheduleClock: String? = null,
 )
 
 data class NearbyStop(
@@ -320,21 +330,62 @@ class OasaRepository(
     }
 
     /**
+     * For arrivals whose route does not start at [stopCode], fills [ArrivalDetail.originDepartureMinutes],
+     * [ArrivalDetail.originScheduleClock], and [ArrivalDetail.originStopDescription] using the next
+     * **scheduled** origin departure from [getDailySchedule] (`come` / αφετηρία windows, Europe/Athens).
+     */
+    suspend fun enrichArrivalsWithOriginSchedule(
+        stopCode: String,
+        arrivals: List<ArrivalDetail>,
+    ): List<ArrivalDetail> {
+        if (arrivals.isEmpty()) return arrivals
+        val originByRoute = originRoutesNotStartingAtStop(stopCode, arrivals)
+        if (originByRoute.isEmpty()) return arrivals
+        val zone = ZoneId.of("Europe/Athens")
+        val now = ZonedDateTime.now(zone)
+        val labelCache = mutableMapOf<String, String>()
+        suspend fun labelFor(code: String): String =
+            labelCache.getOrPut(code) {
+                getStopLabel(code).ifBlank { code }
+            }
+        val timetableByLine = mutableMapOf<String, RouteDailyTimetable>()
+        for (lc in originByRoute.keys.mapNotNull { lineCodeForRoute(it) }.distinct()) {
+            timetableByLine[lc] = getRouteDailyTimetable(lc)
+        }
+        val hintByRoute = mutableMapOf<String, Pair<String, Int>>()
+        for ((route, originStop) in originByRoute) {
+            val lc = lineCodeForRoute(route) ?: continue
+            val tt = timetableByLine[lc] ?: continue
+            val next = nextOriginScheduleStart(tt, now) ?: continue
+            val (departureTime, startsNextCalendarDay) = next
+            val mins = minutesUntilClock(now, departureTime, startsNextCalendarDay)
+            if (mins < 0 || mins >= ARRIVAL_MINUTES_UNKNOWN) continue
+            val clock = departureTime.format(scheduleClockFormatter)
+            hintByRoute[route] = clock to mins
+        }
+        return arrivals.map { arr ->
+            val hint = hintByRoute[arr.routeCode] ?: return@map arr
+            val originStop = originByRoute[arr.routeCode] ?: return@map arr
+            val (clock, mins) = hint
+            arr.copy(
+                originDepartureMinutes = mins,
+                originScheduleClock = clock,
+                originStopDescription = labelFor(originStop),
+            )
+        }
+    }
+
+    /**
      * Adds [ArrivalDetail.originDepartureMinutes] / [ArrivalDetail.originStopDescription] for each
      * arrival whose route starts at a different stop than [stopCode], using live data at the origin.
+     * Skips routes already resolved by [enrichArrivalsWithOriginSchedule] ([originScheduleClock] set).
      */
     suspend fun enrichArrivalsWithOriginBoardings(
         stopCode: String,
         arrivals: List<ArrivalDetail>,
     ): List<ArrivalDetail> {
         if (arrivals.isEmpty()) return arrivals
-        val distinctRoutes = arrivals.map { it.routeCode }.filter { it.isNotBlank() }.distinct()
-        val originByRoute = mutableMapOf<String, String>()
-        for (route in distinctRoutes) {
-            val origin = getRouteOriginStopCode(route) ?: continue
-            if (origin == stopCode) continue
-            originByRoute[route] = origin
-        }
+        val originByRoute = originRoutesNotStartingAtStop(stopCode, arrivals)
         if (originByRoute.isEmpty()) return arrivals
         val labelCache = mutableMapOf<String, String>()
         suspend fun labelFor(code: String): String =
@@ -355,6 +406,7 @@ class OasaRepository(
         }
         return arrivals.map { arr ->
             val originStop = originByRoute[arr.routeCode] ?: return@map arr
+            if (arr.originScheduleClock != null) return@map arr
             val mins = minutesByRoute[arr.routeCode]
             if (mins == null) arr
             else arr.copy(
@@ -725,6 +777,20 @@ class OasaRepository(
         lineLabel = lineLabel,
     )
 
+    private suspend fun originRoutesNotStartingAtStop(
+        stopCode: String,
+        arrivals: List<ArrivalDetail>,
+    ): Map<String, String> {
+        val distinctRoutes = arrivals.map { it.routeCode }.filter { it.isNotBlank() }.distinct()
+        val out = LinkedHashMap<String, String>()
+        for (route in distinctRoutes) {
+            val origin = getRouteOriginStopCode(route) ?: continue
+            if (origin == stopCode) continue
+            out[route] = origin
+        }
+        return out
+    }
+
     private suspend fun mapArrivalJson(
         j: OasaArrivalJson,
         stopCode: String,
@@ -838,6 +904,66 @@ private fun oasaScheduleTimeToHm(raw: String?): String? {
     val h = parts[0].toIntOrNull() ?: return null
     val m = parts[1].toIntOrNull() ?: return null
     return "%02d:%02d".format(h, m)
+}
+
+private val scheduleClockFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+/** Next start time of an origin (`come`) schedule window and whether it falls on the next calendar day. */
+private fun nextOriginScheduleStart(
+    timetable: RouteDailyTimetable,
+    now: ZonedDateTime,
+): Pair<LocalTime, Boolean>? {
+    val starts = timetable.originDepartures
+        .flatMap { scheduleWindowStartTimes(it) }
+        .distinct()
+        .sorted()
+    if (starts.isEmpty()) return null
+    val nowT = now.toLocalTime()
+    val after = starts.firstOrNull { it.isAfter(nowT) }
+    return if (after != null) {
+        after to false
+    } else {
+        starts.first() to true
+    }
+}
+
+private fun minutesUntilClock(
+    now: ZonedDateTime,
+    departureTime: LocalTime,
+    nextCalendarDay: Boolean,
+): Int {
+    val zone = now.zone
+    val today = now.toLocalDate()
+    val day = if (nextCalendarDay) today.plusDays(1) else today
+    var target = ZonedDateTime.of(day, departureTime, zone)
+    if (!nextCalendarDay && !target.isAfter(now)) {
+        target = target.plusDays(1)
+    }
+    return ChronoUnit.MINUTES.between(now, target).toInt()
+        .coerceIn(0, ARRIVAL_MINUTES_UNKNOWN - 1)
+}
+
+private fun scheduleWindowStartTimes(row: RouteDailyTimetableRow): List<LocalTime> {
+    val out = ArrayList<LocalTime>(2)
+    scheduleRangeStartLocal(row.primaryRange)?.let { out.add(it) }
+    row.secondaryRange?.let { scheduleRangeStartLocal(it) }?.let { out.add(it) }
+    return out
+}
+
+private fun scheduleRangeStartLocal(range: String): LocalTime? {
+    val s = range.trim()
+    if (s.isEmpty()) return null
+    val startToken = s.split(Regex("""[-–]""")).firstOrNull()?.trim().orEmpty()
+    return parseScheduleWallClock(startToken)
+}
+
+private fun parseScheduleWallClock(token: String): LocalTime? {
+    val parts = token.split(':')
+    if (parts.size < 2) return null
+    val h = parts[0].toIntOrNull() ?: return null
+    val m = parts[1].toIntOrNull() ?: return null
+    if (h !in 0..23 || m !in 0..59) return null
+    return LocalTime.of(h, m)
 }
 
 private fun OasaStopXYJson.descrValue(): String =

@@ -65,7 +65,8 @@ class ArrivalsViewModel(
         runCatching {
             val title = repository.getStopLabel(stopCode)
             val raw = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
-            val arrivals = repository.enrichArrivalsWithOriginBoardings(stopCode, raw)
+            val withSchedule = repository.enrichArrivalsWithOriginSchedule(stopCode, raw)
+            val arrivals = repository.enrichArrivalsWithOriginBoardings(stopCode, withSchedule)
             val fav = favoritesRepository.isFavorite(stopCode)
             _uiState.update {
                 it.copy(
@@ -89,4 +90,52 @@ class ArrivalsViewModel(
     companion object {
         private const val POLL_INTERVAL_MS = 30_000L
     }
+}
+
+/**
+ * Flat list for the arrivals screen: live predictions plus, when applicable, a **separate** row for
+ * the next scheduled origin departure (not nested under a specific vehicle row).
+ */
+sealed class ArrivalListRow {
+    data class Live(val detail: ArrivalDetail) : ArrivalListRow()
+
+    data class ScheduledOriginDeparture(
+        val routeCode: String,
+        val lineLabel: String,
+        val originStopDescription: String?,
+        val clock: String,
+        val minutesUntil: Int,
+    ) : ArrivalListRow()
+}
+
+internal fun buildArrivalListRows(arrivals: List<ArrivalDetail>): List<ArrivalListRow> {
+    if (arrivals.isEmpty()) return emptyList()
+    val scheduleEmitted = mutableSetOf<String>()
+    val out = ArrayList<ArrivalListRow>(arrivals.size + 2)
+    for (a in arrivals) {
+        val scheduleRow = a.originScheduleClock?.takeIf { it.isNotBlank() } != null
+        val live = if (scheduleRow) {
+            a.copy(
+                originScheduleClock = null,
+                originDepartureMinutes = null,
+                originStopDescription = null,
+            )
+        } else {
+            a
+        }
+        out.add(ArrivalListRow.Live(live))
+        if (scheduleRow && a.routeCode.isNotBlank() && a.routeCode !in scheduleEmitted) {
+            scheduleEmitted.add(a.routeCode)
+            out.add(
+                ArrivalListRow.ScheduledOriginDeparture(
+                    routeCode = a.routeCode,
+                    lineLabel = a.lineLabel,
+                    originStopDescription = a.originStopDescription,
+                    clock = a.originScheduleClock!!.trim(),
+                    minutesUntil = a.originDepartureMinutes ?: 999,
+                ),
+            )
+        }
+    }
+    return out
 }

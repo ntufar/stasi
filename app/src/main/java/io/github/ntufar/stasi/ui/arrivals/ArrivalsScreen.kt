@@ -58,6 +58,7 @@ fun ArrivalsScreen(
         },
     )
     val ui by vm.uiState.collectAsStateWithLifecycle()
+    val listRows = remember(ui.arrivals) { buildArrivalListRows(ui.arrivals) }
     val mapRouteCode = remember(ui.arrivals) {
         ui.arrivals.firstOrNull { it.routeCode.isNotBlank() }?.routeCode
     }
@@ -105,49 +106,110 @@ fun ArrivalsScreen(
                     .fillMaxSize()
                     .padding(padding),
             ) {
-                items(ui.arrivals, key = { "${it.routeCode}-${it.vehCode}-${it.minutes}" }) { a ->
-                    val minutesText = if (a.minutes >= 999) "—" else "${a.minutes}΄"
-                    val originText = a.originDepartureMinutes?.let { om ->
-                        if (om >= 999) return@let null
-                        val oLabel = a.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
-                        val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
-                        "Από αφετηρία$fromPart: ${om}΄"
-                    }
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = a.routeCode.isNotBlank()) {
-                                onOpenMap(a.routeCode)
+                items(
+                    listRows,
+                    key = { row ->
+                        when (row) {
+                            is ArrivalListRow.Live ->
+                                "live-${row.detail.routeCode}-${row.detail.vehCode}-${row.detail.minutes}"
+                            is ArrivalListRow.ScheduledOriginDeparture ->
+                                "sched-${row.routeCode}-${row.clock}"
+                        }
+                    },
+                ) { row ->
+                    when (row) {
+                        is ArrivalListRow.Live -> {
+                            val a = row.detail
+                            val minutesText = if (a.minutes >= 999) "—" else "${a.minutes}΄"
+                            val originText = a.originDepartureMinutes?.let { om ->
+                                if (om >= 999) return@let null
+                                val oLabel = a.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
+                                val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
+                                "Από αφετηρία$fromPart: ${om}΄"
                             }
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                    ) {
-                        val scheme = MaterialTheme.colorScheme
-                        Text(
-                            minutesText,
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (a.minutes >= 999) scheme.onSurfaceVariant else scheme.primary,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            a.lineLabel,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = scheme.onSurface,
-                        )
-                        Text(
-                            a.destinationLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = scheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                        if (originText != null) {
-                            Text(
-                                originText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = scheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = a.routeCode.isNotBlank()) {
+                                        onOpenMap(a.routeCode)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                            ) {
+                                val scheme = MaterialTheme.colorScheme
+                                Text(
+                                    minutesText,
+                                    fontSize = 48.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (a.minutes >= 999) scheme.onSurfaceVariant else scheme.primary,
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    a.lineLabel,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = scheme.onSurface,
+                                )
+                                Text(
+                                    a.destinationLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = scheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 6.dp),
+                                )
+                                if (originText != null) {
+                                    Text(
+                                        originText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = scheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 8.dp),
+                                    )
+                                }
+                            }
+                        }
+                        is ArrivalListRow.ScheduledOriginDeparture -> {
+                            val scheme = MaterialTheme.colorScheme
+                            val oLabel = row.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
+                            val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
+                            val approx = when {
+                                row.minutesUntil >= 999 -> null
+                                row.minutesUntil <= 0 -> "σε <1΄"
+                                else -> "~${row.minutesUntil}΄"
+                            }
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = row.routeCode.isNotBlank()) {
+                                        onOpenMap(row.routeCode)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                            ) {
+                                Text(
+                                    row.clock,
+                                    fontSize = 40.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = scheme.secondary,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    row.lineLabel,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = scheme.onSurface,
+                                )
+                                Text(
+                                    text = "Δρομολόγιο από αφετηρία$fromPart",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = scheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 6.dp),
+                                )
+                                if (approx != null) {
+                                    Text(
+                                        text = "Έναρξη κυκλοφορίας περίπου $approx",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = scheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 6.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
