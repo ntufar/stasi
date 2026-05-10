@@ -13,13 +13,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,8 +37,8 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -405,6 +408,9 @@ private fun RouteTimetablePanel(
                 )
             }
             timetable != null -> {
+                val origins = timetable.originDepartures
+                val termini = timetable.terminusDepartures
+                val pairedRows = maxOf(origins.size, termini.size)
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -419,14 +425,37 @@ private fun RouteTimetablePanel(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     item {
-                        Text(
-                            text = "Αφετηρία",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Text(
+                                text = "Αφετηρία",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            VerticalDivider(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 2.dp),
+                            )
+                            Text(
+                                text = "Τέρμα",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 8.dp),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                         Spacer(modifier = Modifier.height(6.dp))
                     }
-                    if (timetable.originDepartures.isEmpty()) {
+                    if (pairedRows == 0) {
                         item {
                             Text(
                                 text = "Δεν υπάρχουν δεδομένα.",
@@ -435,38 +464,32 @@ private fun RouteTimetablePanel(
                             )
                         }
                     } else {
-                        itemsIndexed(
-                            timetable.originDepartures,
-                            key = { ix, row -> "o-$ix-${row.primaryRange}" },
-                        ) { _, row ->
-                            TimetableRow(row)
-                        }
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Τέρμα",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                    if (timetable.terminusDepartures.isEmpty()) {
-                        item {
-                            Text(
-                                text = "Δεν υπάρχουν δεδομένα.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else {
-                        itemsIndexed(
-                            timetable.terminusDepartures,
-                            key = { ix, row -> "t-$ix-${row.primaryRange}" },
-                        ) { _, row ->
-                            TimetableRow(row)
+                        items(
+                            count = pairedRows,
+                            key = { ix ->
+                                val o = origins.getOrNull(ix)?.primaryRange ?: ""
+                                val t = termini.getOrNull(ix)?.primaryRange ?: ""
+                                "pair-$ix-$o-$t"
+                            },
+                        ) { ix ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Box(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                    TimetableRowCell(origins.getOrNull(ix))
+                                }
+                                VerticalDivider(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(vertical = 4.dp),
+                                )
+                                Box(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                                    TimetableRowCell(termini.getOrNull(ix))
+                                }
+                            }
                         }
                     }
                     item {
@@ -491,23 +514,31 @@ private fun RouteTimetablePanel(
 }
 
 @Composable
-private fun TimetableRow(row: RouteDailyTimetableRow) {
+private fun TimetableRowCell(row: RouteDailyTimetableRow?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
     ) {
-        Text(
-            text = row.primaryRange,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        row.secondaryRange?.let { sec ->
+        if (row == null) {
             Text(
-                text = sec,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "—",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
             )
+        } else {
+            Text(
+                text = row.primaryRange,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            row.secondaryRange?.let { sec ->
+                Text(
+                    text = sec,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
