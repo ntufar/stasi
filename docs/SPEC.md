@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.16 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.17 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -33,14 +33,17 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
     - **Arrivals screen:** an amber chip ("Last service" / "Τελευταίο") appears next to the line label for affected routes.
     - **Timetable tab (MapScreen):** an amber banner appears below the title, and the last origin departure row is highlighted with an amber background.
     - The warning activates when `now` is within 30 min of the last time-window end in origin departures, or up to 2 hours past it (service ended). Computed per line using `Europe/Athens` timezone.
-11. **Arrival Notifications:** one-shot alerts for individual buses:
-    - **Bell icon** on each live arrival row (filled when alert is active, outlined otherwise).
-    - Tap the bell → schedules a **WorkManager** background job that polls `getStopArrivals` every 45 seconds.
-    - When `minutes <= 5` for the target route, a **local notification** fires (high priority, vibration) and the alert auto-cancels.
-    - Alerts auto-expire after **30 minutes** if the bus never reaches threshold (delayed/cancelled service).
-    - **POST_NOTIFICATIONS** permission requested on Android 13+ on first bell tap.
-    - Tap the notification → opens Arrivals screen for that stop.
-    - Privacy: no server, no accounts — all local WorkManager + DataStore.
+11. **Arrival alerts (local notifications):** one-shot reminders tied to a **live arrival row** (stop + route + vehicle id from OASA):
+    - **Alerts icon** on each live row when `routeCode` is known: **filled** `Notifications` when an alert is active for that row, **outlined** `NotificationsNone` otherwise (`cd_alert`). Tapping toggles the alert on or off.
+    - **Enabling:** schedules a **unique** `OneTimeWorkRequest` (`ArrivalAlertWorker`) via **WorkManager** (`work-runtime-ktx`). The worker loop polls **`getStopArrivals`** (through `OasaRepository`) every **45 seconds** while the alert remains in the active set.
+    - **Fire condition:** the worker takes the **first** live row whose **`routeCode`** matches the alert and whose **`minutes` ≤ 5**; then shows a **high-importance** notification (vibration), removes the alert from DataStore, and ends work successfully.
+    - **Expiry:** if threshold is never reached, the worker removes the alert after **30 minutes** of polling and exits successfully.
+    - **Android 13+:** **`POST_NOTIFICATIONS`** is declared in the manifest; on first tap to **enable** an alert, if permission is missing the system permission sheet runs, and the alert is only scheduled after grant (pending args held in composable state).
+    - **Channel:** `arrival_alerts` is created at **`Application.onCreate`** (`NotificationHelper.createChannel`). Copy uses `notification_channel_*` and `notification_arrival_*` strings (EN + EL).
+    - **Content intent:** `MainActivity` with `navigate_to_stop` extra = stop code (for opening the right stop; **navigation must consume this extra** in the Compose layer to land on Arrivals—intent is prepared for deep link).
+    - **Persistence:** active alert keys live in a separate **Preferences DataStore** (`arrival_alerts`, string set); `ArrivalsViewModel` collects `activeAlerts` filtered by current `stopCode` to drive icon state. Cancelling work clears via `cancelUniqueWork` + repository remove.
+    - **Foreground list:** while Arrivals is visible, the screen also **refreshes arrivals every 30 seconds** and **on each `RESUMED`** lifecycle (`refreshNow`), independent of the worker.
+    - Privacy: **no push server**, no accounts — local notifications + on-device polling + DataStore only.
 
 ## 4. Out of Scope for MVP
 - Ticket purchase
@@ -51,7 +54,8 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 - UI: Jetpack Compose + Material 3
 - Architecture: MVVM, Repository pattern
 - Networking: Retrofit2 + Gson, Coroutines
-- Storage: Room for cache, DataStore for preferences (favorites + UI language)
+- Storage: Room for cache; DataStore for **favorites + UI language** (`SettingsRepository` / favorites store) and **active arrival alerts** (`AlertsRepository`, `arrival_alerts` preferences file)
+- Background: **WorkManager** for arrival alert polling (`ArrivalAlertWorker`)
 - Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`)
 - Maps: MapLibre SDK (open source, no API key)
 - Min SDK 26, Target SDK 34
@@ -84,21 +88,27 @@ io.github.ntufar.stasi/
 - data/
   - api/OasaApi.kt
   - local/AppDatabase.kt, StopDao.kt
-  - repository/OasaRepository.kt
+  - repository/OasaRepository.kt, FavoritesRepository.kt, SettingsRepository.kt, **AlertsRepository.kt**
+- workers/
+  - **ArrivalAlertWorker.kt**
+- util/
+  - **NotificationHelper.kt**
 - ui/
   - home/HomeScreen.kt
   - arrivals/ArrivalsScreen.kt
   - search/SearchScreen.kt
   - map/MapScreen.kt
   - theme/
-- data/repository/SettingsRepository.kt (UI locale)
+- di/AppContainer.kt (wires repositories including `alertsRepository`)
 - MainActivity.kt
+- StasiApplication.kt (`AppContainer`, MapLibre init, notification channel)
 - StasiApp.kt (NavHost + drawer)
 
 ## 9. UI Flows
 Any main screen → **menu icon** → drawer → Home / Search / Route map, or **Language** (English / Greek). On **Route map**, open the drawer via **menu** only (no edge-swipe), so map gestures stay uninterrupted.
 Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
+Arrivals → **alerts icon** on a live row → optional **POST_NOTIFICATIONS** grant (Android 13+) → **WorkManager** poll until ≤5 min or 30 min timeout → **local notification**; tap again (or cancel path) to clear alert and worker
 Arrivals → map icon → MapScreen with route polyline
 MapScreen → **tabs** — **Χάρτης** (map) / **Δρομολόγια** (timetable from `getDailySchedule` when line code is known); tabs appear once route stops have loaded successfully
 MapScreen (manual, no line yet) → map shows **nearby stop pins** from `getClosestStops` when location is available; tap pin → Arrivals
@@ -115,7 +125,7 @@ Design rules:
 ## 10. Key Behaviors for Copilot
 - When generating API calls, always use suspend functions with Retrofit, wrap in try/catch, fallback to Room cache
 - For Greek search, normalize strings: Normalizer.normalize(input, NFD).replace("\p{M}".toRegex(), "").lowercase()
-- All network calls must go through OasaRepository, never directly from ViewModel
+- All network calls must go through OasaRepository, never directly from ViewModel; background workers that need OASA data should also use `OasaRepository` (same as `ArrivalAlertWorker`)
 - Use StateFlow in ViewModel, collectAsState in Compose
 - MapLibre: add source once, update data, do not recreate style on recomposition
 - Respect cleartext: manifest already has usesCleartextTraffic=true
@@ -129,6 +139,7 @@ Design rules:
 ## 12. Privacy
 - No analytics, no crashlytics in MVP
 - Location used only for nearby, not stored
+- Arrival alerts: no third-party push; only user-initiated local notifications and on-device stored alert keys
 - User-Agent: "Stasi/1.0 (+https://github.com/you/stasi)"
 
 ## 13. Acceptance Criteria
@@ -142,6 +153,9 @@ Design rules:
 - App works airplane mode after first load for cached stops
 - Drawer opens from menu icon; choosing a top-level destination preserves reasonable back stack behavior (`popUpTo` start destination with state save/restore)
 - Switching language updates UI immediately (activity recreate); choice survives app restart
+- On Arrivals, user can enable an alert on a live row (with `routeCode`); within **30 minutes** either a notification fires when that **route** at the stop is **≤5 minutes** in live data, or the alert clears without notification
+- Android 13+: denying notification permission leaves the alert off after the permission flow; granting it schedules the worker as above
+- Active alert rows show the **filled** notifications icon; tapping again cancels WorkManager unique work and removes the key from DataStore
 
 ## 14. Next Steps for Development
 1. Implement OasaRepository with caching

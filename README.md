@@ -22,10 +22,11 @@
 - **Nearby** — GPS-based stops sorted by distance.
 - **Map** — Route polyline, stops, live vehicle positions, and **your location** on the map when you allow location (MapLibre, no map API key).
 - **Offline-friendly cache** — Lines/stops cached (24h policy in product spec), arrivals short-lived cache.
+- **Arrival alerts** — Optional local notification when a chosen live arrival is within a few minutes (WorkManager + on-device storage; no remote push server).
 
 Design defaults: dark / AMOLED-friendly Material 3. Primary UI language Greek with English fallback where relevant.
 
-**Not in scope (MVP):** ticket purchase, multi-leg journey planner, push notifications.
+**Not in scope (MVP):** ticket purchase, multi-leg journey planner, **remote** push / marketing notifications (alerts are user-triggered and local-only).
 
 ---
 
@@ -33,7 +34,8 @@ Design defaults: dark / AMOLED-friendly Material 3. Primary UI language Greek wi
 
 - **Kotlin**, **Jetpack Compose**, **Material 3**
 - **MVVM** + repository layer; **Retrofit** + **Gson**, **Coroutines**
-- **Room** (cache), **DataStore** (preferences)
+- **Room** (cache), **DataStore** (preferences + arrival alert state)
+- **WorkManager** (arrival alert polling)
 - **MapLibre** Android SDK
 - **Google Play services — location** (coarse/fine for nearby stops)
 
@@ -141,6 +143,7 @@ Play Console app must use package **`io.github.ntufar.stasi`** (or change `appli
 app/src/main/java/io/github/ntufar/stasi/
   data/       # API, Room, repository, utilities
   di/         # App wiring / composition
+  workers/    # WorkManager jobs (e.g. arrival alerts)
   ui/         # Compose screens & theme
   MainActivity.kt, StasiApp.kt, StasiApplication.kt
 docs/SPEC.md              # Product & technical specification
