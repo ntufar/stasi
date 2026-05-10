@@ -50,6 +50,10 @@ class SearchViewModel(
                     linesCatalog = if (ok) LinesCatalogState.Ready else LinesCatalogState.Unavailable,
                 )
             }
+            // Stop search reads `cached_stops`; lines-only warm does not ingest stops — run catalog sync.
+            if (ok) {
+                repository.syncCatalogIncremental()
+            }
         }
     }
 
@@ -62,6 +66,9 @@ class SearchViewModel(
                 it.copy(
                     linesCatalog = if (ok) LinesCatalogState.Ready else LinesCatalogState.Unavailable,
                 )
+            }
+            if (ok) {
+                repository.syncCatalogIncremental()
             }
         }
     }

@@ -1,6 +1,8 @@
 package io.github.ntufar.stasi.data.repository
 
 import android.content.Context
+import android.util.Log
+import io.github.ntufar.stasi.LOCALE_LOG_TAG
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -54,7 +56,9 @@ class SettingsRepository(
 
     suspend fun setLocaleTag(tag: String) {
         require(tag == LANGUAGE_EN || tag == LANGUAGE_EL)
+        Log.d(LOCALE_LOG_TAG, "SettingsRepository.setLocaleTag: persisting tag=$tag")
         store.edit { it[UI_LOCALE] = tag }
+        Log.d(LOCALE_LOG_TAG, "SettingsRepository.setLocaleTag: DataStore edit completed for tag=$tag")
     }
 
     suspend fun setArrivalAlertThresholdMinutes(minutes: Int) {

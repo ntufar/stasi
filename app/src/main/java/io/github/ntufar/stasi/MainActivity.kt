@@ -3,6 +3,7 @@ package io.github.ntufar.stasi
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ntufar.stasi.data.repository.SettingsRepository
 import io.github.ntufar.stasi.di.LocalAppContainer
+import io.github.ntufar.stasi.ui.locale.ProvideAppLocaleCompositionLocals
 import io.github.ntufar.stasi.ui.theme.StasiTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -31,9 +35,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CompositionLocalProvider(LocalAppContainer provides container) {
-                StasiTheme {
-                    Surface(modifier = Modifier.fillMaxSize()) {
-                        StasiApp(initialStopCode = pendingStopCode)
+                CompositionLocalProvider(
+                    LocalActivityResultRegistryOwner provides this@MainActivity,
+                ) {
+                    val localeTag by container.settingsRepository.localeTag.collectAsStateWithLifecycle(
+                        initialValue = SettingsRepository.LANGUAGE_EL,
+                    )
+                    ProvideAppLocaleCompositionLocals(localeTag) {
+                        StasiTheme {
+                            Surface(modifier = Modifier.fillMaxSize()) {
+                                StasiApp(initialStopCode = pendingStopCode)
+                            }
+                        }
                     }
                 }
             }

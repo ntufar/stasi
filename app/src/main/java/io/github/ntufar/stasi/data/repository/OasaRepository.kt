@@ -17,6 +17,7 @@ import io.github.ntufar.stasi.data.local.RouteStopCacheEntity
 import io.github.ntufar.stasi.data.local.StasiDao
 import io.github.ntufar.stasi.data.util.EndpointRateLimiter
 import io.github.ntufar.stasi.data.util.lineSearchNorm
+import io.github.ntufar.stasi.data.util.expandLatinLettersQueryForGreekSearch
 import io.github.ntufar.stasi.data.util.normalizeGreek
 import io.github.ntufar.stasi.data.util.stopSearchNorm
 import io.github.ntufar.stasi.data.util.ARRIVAL_MINUTES_UNKNOWN
@@ -277,7 +278,7 @@ class OasaRepository(
     }
 
     suspend fun searchStops(query: String): List<CachedStopEntity> {
-        val q = normalizeGreek(query).trim()
+        val q = normalizeGreek(expandLatinLettersQueryForGreekSearch(query)).trim()
         if (q.length < 2) return emptyList()
         val needle = q.replace("%", "").replace("_", "")
         if (needle.isEmpty()) return emptyList()
@@ -289,7 +290,7 @@ class OasaRepository(
     }
 
     suspend fun searchLines(query: String): List<CachedLineEntity> {
-        val q = normalizeGreek(query).trim()
+        val q = normalizeGreek(expandLatinLettersQueryForGreekSearch(query)).trim()
         if (q.length < 2) return emptyList()
         val needle = q.replace("%", "").replace("_", "")
         if (needle.isEmpty()) return emptyList()

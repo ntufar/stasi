@@ -1,5 +1,6 @@
 package io.github.ntufar.stasi
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -64,6 +65,10 @@ fun StasiApp(initialStopCode: String? = null) {
             endMinutes = SettingsRepository.DEFAULT_QUIET_HOURS_END_MINUTES,
         ),
     )
+
+    LaunchedEffect(localeTag) {
+        Log.d(LOCALE_LOG_TAG, "StasiApp: compose localeTag=$localeTag")
+    }
 
     val openDrawer: () -> Unit = remember(scope, drawerState) {
         {
@@ -305,10 +310,16 @@ fun StasiApp(initialStopCode: String? = null) {
                     label = { Text(stringResource(R.string.language_english)) },
                     selected = localeTag == SettingsRepository.LANGUAGE_EN,
                     onClick = {
+                        Log.d(
+                            LOCALE_LOG_TAG,
+                            "language UI: English clicked (current localeTag=$localeTag)",
+                        )
                         scope.launch {
+                            Log.d(LOCALE_LOG_TAG, "language switch: coroutine started (English)")
                             drawerState.close()
                             container.settingsRepository.setLocaleTag(SettingsRepository.LANGUAGE_EN)
                             AppLocale.apply(SettingsRepository.LANGUAGE_EN)
+                            Log.d(LOCALE_LOG_TAG, "language switch: coroutine finished (English)")
                         }
                         Unit
                     },
@@ -317,10 +328,16 @@ fun StasiApp(initialStopCode: String? = null) {
                     label = { Text(stringResource(R.string.language_greek)) },
                     selected = localeTag == SettingsRepository.LANGUAGE_EL,
                     onClick = {
+                        Log.d(
+                            LOCALE_LOG_TAG,
+                            "language UI: Greek clicked (current localeTag=$localeTag)",
+                        )
                         scope.launch {
+                            Log.d(LOCALE_LOG_TAG, "language switch: coroutine started (Greek)")
                             drawerState.close()
                             container.settingsRepository.setLocaleTag(SettingsRepository.LANGUAGE_EL)
                             AppLocale.apply(SettingsRepository.LANGUAGE_EL)
+                            Log.d(LOCALE_LOG_TAG, "language switch: coroutine finished (Greek)")
                         }
                         Unit
                     },

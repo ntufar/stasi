@@ -45,9 +45,13 @@ Detailed API contracts, rate limits, and architecture notes live in [docs/SPEC.m
 
 ## Prerequisites
 
-- **JDK 17** (Temurin matches CI)
+- **JDK 17** (Temurin matches CI). If your shell’s default `java` is newer (e.g. JDK 26), Gradle can fail with a cryptic message—**pin 17** before running `./gradlew`:
+  - **macOS:** `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`
+  - **Linux / Windows:** set `JAVA_HOME` to your JDK 17 install.
 - **Android SDK** with API **34** platform / build-tools (Android Studio provides this)
 - A device or emulator running **API 26+**
+
+Cursor agents follow the same rule in **`.cursor/rules/jdk-17-gradle.mdc`**.
 
 ---
 

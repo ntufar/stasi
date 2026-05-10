@@ -38,4 +38,26 @@ class GreekTextTest {
         assertTrue(norm.contains("07001"))
         assertTrue(norm.contains(normalizeGreek("συνταγμα")))
     }
+
+    @Test
+    fun expandLatinLettersQuery_mapsSyntagmaToGreekForNormMatch() {
+        val expanded = expandLatinLettersQueryForGreekSearch("syntagma")
+        assertEquals(normalizeGreek("συνταγμα"), normalizeGreek(expanded))
+    }
+
+    @Test
+    fun expandLatinLettersQuery_mapsNosokPrefixForHospitalGreeklish() {
+        val expanded = expandLatinLettersQueryForGreekSearch("nosok")
+        assertTrue(normalizeGreek("ΝΟΣΟΚΟΜΕΙΟ").contains(normalizeGreek(expanded)))
+    }
+
+    @Test
+    fun expandLatinLettersQuery_leavesNumericLineCodesUnchanged() {
+        assertEquals("224", expandLatinLettersQueryForGreekSearch("224"))
+    }
+
+    @Test
+    fun expandLatinLettersQuery_leavesMixedAlphanumericUnchanged() {
+        assertEquals("X93", expandLatinLettersQueryForGreekSearch("X93"))
+    }
 }

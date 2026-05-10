@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -62,8 +64,11 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.ntufar.stasi.R
 import androidx.compose.ui.viewinterop.AndroidView
@@ -298,25 +303,44 @@ fun MapScreen(
                 .padding(padding),
         ) {
             if (uiState.manualMode) {
-                OutlinedTextField(
-                    value = uiState.routeCodeInput,
-                    onValueChange = vm::onRouteCodeInputChange,
+                val routeHint = stringResource(R.string.map_label_route_or_code)
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    label = { Text(stringResource(R.string.map_label_route_or_code)) },
-                    singleLine = true,
-                    trailingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_title))
-                    },
-                )
-                FilledTonalButton(
-                    onClick = vm::applyRouteCode,
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .align(Alignment.End),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(stringResource(R.string.map_show))
+                    OutlinedTextField(
+                        value = uiState.routeCodeInput,
+                        onValueChange = vm::onRouteCodeInputChange,
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { contentDescription = routeHint },
+                        placeholder = {
+                            Text(
+                                text = routeHint,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = { vm.applyRouteCode() },
+                        ),
+                        trailingIcon = {
+                            IconButton(onClick = vm::applyRouteCode) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = stringResource(R.string.search_title),
+                                )
+                            }
+                        },
+                    )
+                    FilledTonalButton(onClick = vm::applyRouteCode) {
+                        Text(stringResource(R.string.map_show))
+                    }
                 }
             }
             val mapStops = if (uiState.stops.isNotEmpty()) uiState.stops else uiState.nearbyStopsForMap

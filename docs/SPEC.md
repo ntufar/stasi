@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.23 | Date: 2026-05-11 | Author: Nicolai Tufar
+Version: 0.28 | Date: 2026-05-11 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -11,13 +11,13 @@ Goal: open app → see your bus in under 1 second.
 - Tourists with limited data
 - Users frustrated by slow official app
 
-Primary language: Greek UI by default; user may switch **English** or **Greek** in the app menu (persisted). Default resource fallback language for missing keys is English (`values/`).
+Primary language: Greek UI by default; user may switch **English** or **Greek** in the app menu (persisted). Changing language **updates all visible UI immediately** (including the current screen), without requiring navigation away or process restart. Compose uses a `ContextWrapper` around the activity that overrides `getResources()` with `createConfigurationContext` so `stringResource` tracks the chosen locale without replacing `LocalContext` with a non-activity context; `MainActivity` also supplies `LocalActivityResultRegistryOwner` for activity-result APIs (e.g. permission launcher on Home). Default resource fallback language for missing keys is English (`values/`). **Launcher / app label:** English `Stasi` (`values/`); Greek **Στάση** (`values-el/`).
 
 ## 3. Core Features (MVP)
 1. Home screen with favorite stops, showing next 2 arrivals per stop live
    - favorites support local aliases and manual ordering
    - recently viewed stop/route shortcuts appear at the top of Home
-2. Search stops and lines by name, Greek fuzzy match (ignores accents)
+2. Search stops and lines by name, Greek fuzzy match (ignores accents). **Latin-only** queries (two or more letters, no digits) are mapped letter-by-letter to a rough Greek form so Greeklish like `syntagma` or `nosok` can match OASA Greek names. **Stops** are served from the local Room cache populated by an incremental catalog sync (`webGetLines` → routes → `webGetStops` per route, throttled to at most about once per 24h); opening **Search** schedules that sync when the lines catalog is available so stop search is not limited to routes the user has already opened on the map.
 3. Arrivals screen: big minutes, line ID, destination; optional **origin departure** line when the stop is not that route’s first stop (see item 7)
    - shows a freshness stamp for the last arrivals fetch (single relative phrase: no duplicate “ago”; wording follows the **app** locale via `DateUtils` + `strings.xml`)
    - **top app bar:** center-aligned title (one line, ellipsized); **back** remains visible; **refresh, drawer, favorite, map, share, and copy actions** live under the **overflow (⋮)** menu so the bar stays uncluttered on long Greek stop names
@@ -27,7 +27,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
    - stops ordered along the route with **sequence numbers** (1 … N);
    - **first stop** (departure) and **last stop** (terminus) visually distinct from middle stops (e.g. color/size);
    - **live buses** shown with **heading** (arrow or rotated icon) approximating direction toward the next segment of the route.
-   - **Manual map without a route:** when location permission is available, show **nearby stops** from `getClosestStops` (same source as Home nearby list) as pins on the map—**uniform stop styling** (not origin/terminus colors); **no route polyline** is drawn between those pins. Each pin shows the **stop name** from OASA (truncated if very long) below the marker, not only a sequence number. Pins disappear once a line is loaded or while a route fetch is in progress. **Initial camera** for that mode **fits the pins and the user** when both exist; if there is still no fix, fit the pins only.
+   - **Manual map without a route:** when location permission is available, show **nearby stops** from `getClosestStops` (same source as Home nearby list) as pins on the map—**uniform stop styling** (not origin/terminus colors); **no route polyline** is drawn between those pins. Each pin shows the **stop name** from OASA (truncated if very long) below the marker, not only a sequence number. Pins disappear once a line is loaded or while a route fetch is in progress. **Initial camera** for that mode **fits the pins and the user** when both exist; if there is still no fix, fit the pins only. **Line / route code entry** is a **single compact row**: outlined field uses a **placeholder** hint (no floating label) for a shorter control, with **Show** beside it on the same baseline row; the field’s **search icon** (tap) and the keyboard **search** action apply the same code as **Show**.
    - **Initial map camera (route loaded):** when opening the route map **before a line is loaded** (manual entry screen), the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait), matching the default zoom used by **My Location** when there is no route and **before** nearby pins arrive; otherwise the default world view stays until nearby data, search, or the FAB. When a route is first shown for a given stop sequence, the map **fits the whole route** (stops and polyline) in view and does **not** auto-center on the user’s location for that initial framing. Periodic live refresh must **not** reset the camera. Changing route/direction (different stop sequence) runs this logic again. The **My Location** FAB still fits **route + user** in one view when pressed (with location permission).
 6. **Map → arrivals:** tapping a **stop marker** on the route map opens the **Arrivals** screen for that stop code (same as Search/Home), showing upcoming buses and times.
 7. **Arrivals at a stop (not the route origin):** when the viewed stop is **not** the **first stop** of that route (in OASA route order), the app shows **when the next service from the route’s origin** is planned. **Schedule-based** hints (`getDailySchedule`, `come` / αφετηρία, Europe/Athens, next window start) appear as their **own list row** (clock + line + “Δρομολόγιο από αφετηρία”), **not** nested under a live vehicle row, so users do not confuse them with the bus counted down in minutes above. **Fallback** when schedule data is missing: a single secondary line on the live row from live `getStopArrivals` at the origin stop. Omit when the user is already at the origin stop.
@@ -61,7 +61,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 - Networking: Retrofit2 + Gson, Coroutines
 - Storage: Room for cache; DataStore for **favorites + UI language + arrival alert threshold minutes + quiet hours** (`SettingsRepository` / `settings` preferences), **recent activity** (`RecentActivityRepository`, `recent_activity` preferences), and **active arrival alerts** (`AlertsRepository`, `arrival_alerts` preferences file)
 - Background: **WorkManager** for arrival alert polling (`ArrivalAlertWorker`)
-- Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`)
+- Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`); **`ProvideAppLocaleCompositionLocals`** in `MainActivity` supplies `LocalContext` as a `ContextWrapper` (activity base, localized `Resources`) plus matching `LocalConfiguration`; **`LocalActivityResultRegistryOwner`** is provided from `MainActivity` so `rememberLauncherForActivityResult` keeps working.
 - Maps: MapLibre SDK (open source, no API key)
 - Min SDK 26, Target SDK 34
 
@@ -133,7 +133,7 @@ Design rules:
 
 ## 10. Key Behaviors for Copilot
 - When generating API calls, always use suspend functions with Retrofit, wrap in try/catch, fallback to Room cache
-- For Greek search, normalize strings: Normalizer.normalize(input, NFD).replace("\p{M}".toRegex(), "").lowercase()
+- For Greek search, normalize strings: Normalizer.normalize(input, NFD).replace("\p{M}".toRegex(), "").lowercase(); Latin-only letter queries are expanded with a simple Greeklish→Greek letter map before normalization.
 - All network calls must go through OasaRepository, never directly from ViewModel; background workers that need OASA data should also use `OasaRepository` (same as `ArrivalAlertWorker`)
 - Use StateFlow in ViewModel, collectAsState in Compose
 - MapLibre: add source once, update data, do not recreate style on recomposition

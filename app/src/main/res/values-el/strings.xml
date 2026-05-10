@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Stasi</string>
+    <string name="app_name">Στάση</string>
 
     <string name="cd_menu">Άνοιγμα μενού</string>
     <string name="cd_search">Αναζήτηση</string>
