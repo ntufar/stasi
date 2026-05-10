@@ -237,7 +237,7 @@ class MapViewModel(
                     it.copy(
                         timetableLoading = false,
                         timetable = null,
-                        timetableError = e.message ?: str(R.string.map_error_timetable_load),
+                        timetableError = str(R.string.map_error_timetable_load),
                     )
                 }
             }
@@ -372,7 +372,7 @@ class MapViewModel(
                     it.copy(
                         isLoading = false,
                         stops = emptyList(),
-                        error = e.message ?: str(R.string.map_error_route_load),
+                        error = str(R.string.map_error_route_load),
                     )
                 }
             }

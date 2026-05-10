@@ -2,7 +2,6 @@ package io.github.ntufar.stasi.ui.home
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -57,6 +56,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.di.LocalAppContainer
+import io.github.ntufar.stasi.util.freshnessUpdatedLabel
 import com.google.android.gms.location.LocationServices
 
 private fun hasAnyLocationPermission(context: android.content.Context): Boolean =
@@ -64,16 +64,6 @@ private fun hasAnyLocationPermission(context: android.content.Context): Boolean 
         PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
-
-private fun freshnessLabel(context: android.content.Context, lastUpdatedMillis: Long?): String? {
-    val updated = lastUpdatedMillis ?: return null
-    val relative = DateUtils.getRelativeTimeSpanString(
-        updated,
-        System.currentTimeMillis(),
-        DateUtils.MINUTE_IN_MILLIS,
-    )
-    return context.getString(R.string.home_updated_at, relative)
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,12 +75,14 @@ fun HomeScreen(
     onOpenRouteMap: (routeCode: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val vm: HomeViewModel = viewModel(
-        factory = remember(container) {
+        factory = remember(container, context) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
                     HomeViewModel(
+                        context.applicationContext,
                         container.oasaRepository,
                         container.favoritesRepository,
                         container.recentActivityRepository,
@@ -99,7 +91,6 @@ fun HomeScreen(
         },
     )
     val ui by vm.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
     var activeMenuStopCode by remember { mutableStateOf<String?>(null) }
     var renameTarget by remember { mutableStateOf<FavoriteStopCard?>(null) }
@@ -275,7 +266,7 @@ fun HomeScreen(
                 }
             }
             items(ui.favoriteCards, key = { it.stopCode }) { card ->
-                val freshness = freshnessLabel(context, card.lastUpdatedMillis)
+                val freshness = freshnessUpdatedLabel(context, card.lastUpdatedMillis, R.string.home_updated_at)
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -304,7 +295,10 @@ fun HomeScreen(
                             }
                             Box {
                                 IconButton(onClick = { activeMenuStopCode = card.stopCode }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = null)
+                                    Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = stringResource(R.string.cd_more_actions),
+                                )
                                 }
                                 DropdownMenu(
                                     expanded = activeMenuStopCode == card.stopCode,

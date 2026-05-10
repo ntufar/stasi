@@ -4,11 +4,11 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,11 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -43,7 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import io.github.ntufar.stasi.R
@@ -70,17 +68,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.di.LocalAppContainer
+import io.github.ntufar.stasi.util.freshnessUpdatedLabel
 import android.widget.Toast
-
-private fun freshnessLabel(context: android.content.Context, lastUpdatedMillis: Long?): String? {
-    val updated = lastUpdatedMillis ?: return null
-    val relative = DateUtils.getRelativeTimeSpanString(
-        updated,
-        System.currentTimeMillis(),
-        DateUtils.MINUTE_IN_MILLIS,
-    )
-    return context.getString(R.string.arrivals_updated_at, relative)
-}
 
 private fun shareMinutes(context: android.content.Context, minutes: Int): String =
     if (minutes >= 999) {
@@ -98,7 +87,7 @@ private fun buildArrivalsShareText(
 ): String {
     val lines = mutableListOf<String>()
     lines += context.getString(R.string.arrivals_share_heading, stopTitle, stopCode)
-    freshnessLabel(context, lastUpdatedMillis)?.let { lines += it }
+    freshnessUpdatedLabel(context, lastUpdatedMillis, R.string.arrivals_updated_at)?.let { lines += it }
     if (arrivals.isEmpty()) {
         lines += context.getString(R.string.arrivals_share_no_arrivals)
     } else {
@@ -218,8 +207,14 @@ fun ArrivalsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(ui.title.ifBlank { stopCode }) },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = ui.title.ifBlank { stopCode },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -229,94 +224,108 @@ fun ArrivalsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = vm::refreshNow) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_refresh))
-                    }
-                    IconButton(onClick = onOpenMenu) {
-                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
-                    }
-                    IconButton(onClick = { vm.toggleFavorite() }) {
-                        Icon(
-                            imageVector = if (ui.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder,
-                            contentDescription = stringResource(R.string.cd_favorite),
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            mapRouteCode?.let(onOpenMap)
-                        },
-                        enabled = mapRouteCode != null,
-                    ) {
-                        Icon(Icons.Default.Map, contentDescription = stringResource(R.string.cd_map))
-                    }
-                    IconButton(onClick = { actionsMenuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_actions))
-                    }
-                    DropdownMenu(
-                        expanded = actionsMenuExpanded,
-                        onDismissRequest = { actionsMenuExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.arrivals_action_share)) },
-                            onClick = {
-                                actionsMenuExpanded = false
-                                val stopTitle = ui.title.ifBlank { stopCode }
-                                val text = buildArrivalsShareText(
-                                    context = context,
-                                    stopTitle = stopTitle,
-                                    stopCode = stopCode,
-                                    lastUpdatedMillis = ui.lastUpdatedMillis,
-                                    arrivals = ui.arrivals,
-                                )
-                                context.startActivity(
-                                    Intent.createChooser(
-                                        Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(
-                                                Intent.EXTRA_SUBJECT,
-                                                context.getString(R.string.arrivals_share_subject, stopTitle),
-                                            )
-                                            putExtra(Intent.EXTRA_TEXT, text)
-                                        },
-                                        context.getString(R.string.arrivals_share_chooser),
-                                    ),
-                                )
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.arrivals_action_copy_summary)) },
-                            onClick = {
-                                actionsMenuExpanded = false
-                                val stopTitle = ui.title.ifBlank { stopCode }
-                                clipboard.setText(
-                                    AnnotatedString(
-                                        buildConciseSummaryText(
-                                            context = context,
-                                            stopTitle = stopTitle,
-                                            stopCode = stopCode,
-                                            arrivals = ui.arrivals,
+                    Box {
+                        IconButton(onClick = { actionsMenuExpanded = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.cd_more_actions),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = actionsMenuExpanded,
+                            onDismissRequest = { actionsMenuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.cd_refresh)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    vm.refreshNow()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.cd_menu)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    onOpenMenu()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.cd_favorite)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    vm.toggleFavorite()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.cd_map)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    mapRouteCode?.let(onOpenMap)
+                                },
+                                enabled = mapRouteCode != null,
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.arrivals_action_share)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    val stopTitle = ui.title.ifBlank { stopCode }
+                                    val text = buildArrivalsShareText(
+                                        context = context,
+                                        stopTitle = stopTitle,
+                                        stopCode = stopCode,
+                                        lastUpdatedMillis = ui.lastUpdatedMillis,
+                                        arrivals = ui.arrivals,
+                                    )
+                                    context.startActivity(
+                                        Intent.createChooser(
+                                            Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(
+                                                    Intent.EXTRA_SUBJECT,
+                                                    context.getString(R.string.arrivals_share_subject, stopTitle),
+                                                )
+                                                putExtra(Intent.EXTRA_TEXT, text)
+                                            },
+                                            context.getString(R.string.arrivals_share_chooser),
                                         ),
-                                    ),
-                                )
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.arrivals_copied_summary),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.arrivals_action_copy_link)) },
-                            onClick = {
-                                actionsMenuExpanded = false
-                                clipboard.setText(AnnotatedString(buildStopDeepLink(stopCode)))
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.arrivals_copied_link),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            },
-                        )
+                                    )
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.arrivals_action_copy_summary)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    val stopTitle = ui.title.ifBlank { stopCode }
+                                    clipboard.setText(
+                                        AnnotatedString(
+                                            buildConciseSummaryText(
+                                                context = context,
+                                                stopTitle = stopTitle,
+                                                stopCode = stopCode,
+                                                arrivals = ui.arrivals,
+                                            ),
+                                        ),
+                                    )
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.arrivals_copied_summary),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.arrivals_action_copy_link)) },
+                                onClick = {
+                                    actionsMenuExpanded = false
+                                    clipboard.setText(AnnotatedString(buildStopDeepLink(stopCode)))
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.arrivals_copied_link),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                            )
+                        }
                     }
                 },
             )
@@ -331,7 +340,15 @@ fun ArrivalsScreen(
                     .padding(padding),
                 ) {
                     item {
-                        freshnessLabel(context, ui.lastUpdatedMillis)?.let {
+                        ui.error?.let { msg ->
+                            Text(
+                                text = msg,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            )
+                        }
+                        freshnessUpdatedLabel(context, ui.lastUpdatedMillis, R.string.arrivals_updated_at)?.let {
                             Text(
                                 text = it,
                                 style = MaterialTheme.typography.labelSmall,

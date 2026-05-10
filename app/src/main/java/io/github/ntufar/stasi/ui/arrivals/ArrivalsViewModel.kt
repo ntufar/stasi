@@ -7,6 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.workDataOf
 import androidx.work.WorkManager
+import io.github.ntufar.stasi.R
 import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.ArrivalDetail
 import io.github.ntufar.stasi.data.repository.FavoritesRepository
@@ -127,8 +128,13 @@ class ArrivalsViewModel(
                     error = null,
                 )
             }
-        }.onFailure { e ->
-            _uiState.update { it.copy(isLoading = false, error = e.message) }
+        }.onFailure {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = appContext.getString(R.string.arrivals_load_failed),
+                )
+            }
         }
     }
 

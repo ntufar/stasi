@@ -38,10 +38,12 @@
     <string name="home_recent">Continue</string>
     <string name="home_recent_stop">Recent stop</string>
     <string name="home_recent_route">Recent route</string>
-    <string name="home_updated_at">Updated %1$s ago</string>
+    <!-- %1$s is a full relative phrase from DateUtils (already includes “ago” / localized equivalent). -->
+    <string name="home_updated_at">Updated %1$s</string>
     <string name="home_favorites">Favorite stops</string>
-    <string name="home_favorites_empty">You don\'t have favorites yet. Add them from the arrivals screen (star icon).</string>
+    <string name="home_favorites_empty">You don\'t have favorites yet. Add them from the arrivals screen (⋮ menu, then Favorite).</string>
     <string name="home_no_arrivals">No arrival data.</string>
+    <string name="home_nearby_load_failed">Could not load nearby stops. Check your network connection.</string>
     <string name="home_favorite_rename">Rename</string>
     <string name="home_favorite_move_up">Move up</string>
     <string name="home_favorite_move_down">Move down</string>
@@ -59,9 +61,10 @@
     <string name="stops_heading">Stops</string>
     <string name="toast_route_load_failed">Could not load the route. Check your network.</string>
 
+    <string name="arrivals_load_failed">Could not load arrivals. Check your network connection.</string>
     <string name="arrivals_last_service_warning">Last service</string>
     <string name="timetable_last_service_warning">Last service window ending soon</string>
-    <string name="arrivals_updated_at">Updated %1$s ago</string>
+    <string name="arrivals_updated_at">Updated %1$s</string>
     <string name="arrivals_share_subject">Arrivals at %1$s</string>
     <string name="arrivals_share_chooser">Share stop</string>
     <string name="arrivals_share_heading">%1$s (%2$s)</string>
@@ -109,6 +112,8 @@
     <string name="notification_arrival_title">%1$s arriving soon</string>
     <string name="notification_arrival_title_arrived">%1$s — arrived</string>
     <string name="notification_arrival_title_departed">%1$s — has left</string>
+    <!-- Substring of [notification_arrival_text] for the minute value; must match that phrase per locale. -->
+    <string name="notification_arrival_minutes_token">%1$d min</string>
     <string name="notification_arrival_text">Arriving in %1$d min at %2$s</string>
     <string name="notification_arrival_arrived">The bus has arrived at %1$s</string>
     <string name="notification_arrival_left">The bus has left. This alert was for %1$s</string>

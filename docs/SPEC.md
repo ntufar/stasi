@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.21 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.23 | Date: 2026-05-11 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -19,7 +19,8 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
    - recently viewed stop/route shortcuts appear at the top of Home
 2. Search stops and lines by name, Greek fuzzy match (ignores accents)
 3. Arrivals screen: big minutes, line ID, destination; optional **origin departure** line when the stop is not that route’s first stop (see item 7)
-   - shows a freshness stamp for the last arrivals fetch
+   - shows a freshness stamp for the last arrivals fetch (single relative phrase: no duplicate “ago”; wording follows the **app** locale via `DateUtils` + `strings.xml`)
+   - **top app bar:** center-aligned title (one line, ellipsized); **back** remains visible; **refresh, drawer, favorite, map, share, and copy actions** live under the **overflow (⋮)** menu so the bar stays uncluttered on long Greek stop names
 4. Nearby stops using GPS, sorted by distance
 5. Route map: draw **all route stops** on the map (not only the polyline), with **clear direction of travel**:
    - **Tabs** when a route has loaded: **Map** / **Timetable** (EN) or **Χάρτης** / **Δρομολόγια** (EL) — daily timetable from OASA `getDailySchedule` using the line’s internal `line_code`; origin (**Αφετηρία** / `come`) and terminus (**Τέρμα** / `go`) appear as **two columns on the same row** so outbound and return time bands are visible together; shorter lists pad with “—” on the missing side;
@@ -128,7 +129,7 @@ Design rules:
 - Arrivals list: **minutes** in 48sp bold using **primary (accent) color**; **line / route title** in semibold `onSurface`; **direction and origin-departure hints** in smaller type with muted **`onSurfaceVariant`**; clear vertical spacing between those tiers
 - One primary action per screen
 - No splash screen
-- All user-visible chrome (labels, errors, tabs where applicable) localized via `strings.xml` (`values` English, `values-el` Greek); API-supplied stop/line names stay as returned by OASA
+- All user-visible chrome (labels, errors, tabs where applicable) localized via `strings.xml` (`values` English, `values-el` Greek); API-supplied stop/line names stay as returned by OASA. Network and fetch failures use app strings (not raw exception messages). The arrivals screen shows a localized error line when a refresh fails.
 
 ## 10. Key Behaviors for Copilot
 - When generating API calls, always use suspend functions with Retrofit, wrap in try/catch, fallback to Room cache

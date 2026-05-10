@@ -1,7 +1,9 @@
 package io.github.ntufar.stasi.ui.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.ntufar.stasi.R
 import io.github.ntufar.stasi.data.repository.ArrivalDetail
 import io.github.ntufar.stasi.data.repository.FavoritesRepository
 import io.github.ntufar.stasi.data.repository.FavoriteStopEntry
@@ -43,6 +45,7 @@ data class HomeUiState(
 )
 
 class HomeViewModel(
+    private val appContext: Context,
     private val repository: OasaRepository,
     private val favoritesRepository: FavoritesRepository,
     private val recentActivityRepository: RecentActivityRepository,
@@ -90,8 +93,10 @@ class HomeViewModel(
                     .sortedBy { it.distanceKm ?: Double.MAX_VALUE }
                     .take(12)
                 _uiState.update { it.copy(nearby = list) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(nearbyError = e.message) }
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(nearbyError = appContext.getString(R.string.home_nearby_load_failed))
+                }
             }
         }
     }

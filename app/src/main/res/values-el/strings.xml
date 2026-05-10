@@ -38,10 +38,11 @@
     <string name="home_recent">Συνέχεια</string>
     <string name="home_recent_stop">Πρόσφατη στάση</string>
     <string name="home_recent_route">Πρόσφατη διαδρομή</string>
-    <string name="home_updated_at">Ενημερώθηκε πριν από %1$s</string>
+    <string name="home_updated_at">Ενημερώθηκε %1$s</string>
     <string name="home_favorites">Αγαπημένες στάσεις</string>
-    <string name="home_favorites_empty">Δεν έχεις ακόμα αγαπημένες. Πρόσθεσε από την οθόνη αφίξεων (εικονίδιο αστεριού).</string>
+    <string name="home_favorites_empty">Δεν έχεις ακόμα αγαπημένες. Πρόσθεσε από την οθόνη αφίξεων (μενού ⋮, μετά Αγαπημένο).</string>
     <string name="home_no_arrivals">Δεν υπάρχουν δεδομένα αφίξεων.</string>
+    <string name="home_nearby_load_failed">Δεν ήταν δυνατή η φόρτωση κοντινών στάσεων. Ελέγξτε τη σύνδεση δικτύου.</string>
     <string name="home_favorite_rename">Μετονομασία</string>
     <string name="home_favorite_move_up">Μετακίνηση πάνω</string>
     <string name="home_favorite_move_down">Μετακίνηση κάτω</string>
@@ -59,9 +60,10 @@
     <string name="stops_heading">Στάσεις</string>
     <string name="toast_route_load_failed">Δεν ήταν δυνατή η φόρτωση της διαδρομής. Ελέγξτε το δίκτυο.</string>
 
+    <string name="arrivals_load_failed">Δεν ήταν δυνατή η φόρτωση αφίξεων. Ελέγξτε τη σύνδεση δικτύου.</string>
     <string name="arrivals_last_service_warning">Τελευταίο</string>
     <string name="timetable_last_service_warning">Τελευταίο δρομολόγιο σύντομα</string>
-    <string name="arrivals_updated_at">Ενημερώθηκε πριν από %1$s</string>
+    <string name="arrivals_updated_at">Ενημερώθηκε %1$s</string>
     <string name="arrivals_share_subject">Αφίξεις στη στάση %1$s</string>
     <string name="arrivals_share_chooser">Κοινή χρήση στάσης</string>
     <string name="arrivals_share_heading">%1$s (%2$s)</string>
@@ -109,6 +111,7 @@
     <string name="notification_arrival_title">%1$s φτάνει σύντομα</string>
     <string name="notification_arrival_title_arrived">%1$s — έφτασε</string>
     <string name="notification_arrival_title_departed">%1$s — αναχώρησε</string>
+    <string name="notification_arrival_minutes_token">%1$d΄</string>
     <string name="notification_arrival_text">Φτάνει σε %1$d΄ στο %2$s</string>
     <string name="notification_arrival_arrived">Το λεωφορείο έφτασε στο %1$s</string>
     <string name="notification_arrival_left">Το λεωφορείο αναχώρησε. Η ειδοποίηση αφορούσε %1$s</string>

@@ -82,7 +82,10 @@ class NotificationHelper(private val context: Context) {
         val text = when (phase) {
             ArrivalPhase.Countdown -> when {
                 minutes <= 0 -> textPlain
-                else -> styleMinutesInCountdown(textPlain, minutes)
+                else -> {
+                    val minutesToken = context.getString(R.string.notification_arrival_minutes_token, minutes)
+                    styleMinutesInCountdown(textPlain, minutes, minutesToken)
+                }
             }
             else -> textPlain
         }
@@ -134,11 +137,13 @@ class NotificationHelper(private val context: Context) {
         return ss
     }
 
-    private fun minutesHighlightRange(plain: String, minutes: Int): IntRange? {
+    private fun minutesHighlightRange(plain: String, minutes: Int, minutesToken: String): IntRange? {
+        val t = minutesToken.trim()
+        if (t.isNotEmpty()) {
+            val i = plain.indexOf(t)
+            if (i >= 0) return i until i + t.length
+        }
         val n = minutes.toString()
-        val withWord = n + " min"
-        val i = plain.indexOf(withWord)
-        if (i >= 0) return i until i + withWord.length
         val idx = plain.indexOf(n)
         if (idx < 0) return null
         val after = idx + n.length
@@ -151,9 +156,9 @@ class NotificationHelper(private val context: Context) {
         return idx until after
     }
 
-    private fun styleMinutesInCountdown(plain: String, minutes: Int): CharSequence {
+    private fun styleMinutesInCountdown(plain: String, minutes: Int, minutesToken: String): CharSequence {
         if (minutes < 0) return plain
-        val range = minutesHighlightRange(plain, minutes) ?: return plain
+        val range = minutesHighlightRange(plain, minutes, minutesToken) ?: return plain
         val ss = SpannableString(plain)
         applyEmphasisSpans(ss, range.first, range.last + 1, MINUTES_RELATIVE_SIZE)
         return ss
