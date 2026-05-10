@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.11 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.13 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -23,7 +23,8 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
    - stops ordered along the route with **sequence numbers** (1 … N);
    - **first stop** (departure) and **last stop** (terminus) visually distinct from middle stops (e.g. color/size);
    - **live buses** shown with **heading** (arrow or rotated icon) approximating direction toward the next segment of the route.
-   - **Initial map camera:** when opening the route map **before a line is loaded** (manual entry screen), the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait), matching the default zoom used by **My Location** when there is no route; otherwise the default world view stays until the user searches or uses the FAB. When a route is first shown for a given stop sequence, the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait for a fix); otherwise it **fits the whole route** in view. Periodic live refresh must **not** reset the camera. Changing route/direction (different stop sequence) runs this logic again. The **My Location** FAB still fits **route + user** in one view when pressed (with location permission).
+   - **Manual map without a route:** when location permission is available, show **nearby stops** from `getClosestStops` (same source as Home nearby list) as pins on the map—**uniform stop styling** (not origin/terminus colors); **no route polyline** is drawn between those pins. Each pin shows the **stop name** from OASA (truncated if very long) below the marker, not only a sequence number. Pins disappear once a line is loaded or while a route fetch is in progress. **Initial camera** for that mode **fits the pins and the user** when both exist; if there is still no fix, fit the pins only.
+   - **Initial map camera (route loaded):** when opening the route map **before a line is loaded** (manual entry screen), the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait), matching the default zoom used by **My Location** when there is no route and **before** nearby pins arrive; otherwise the default world view stays until nearby data, search, or the FAB. When a route is first shown for a given stop sequence, the map **centers and zooms on the user’s location** if a GPS fix is available (after a short wait for a fix); otherwise it **fits the whole route** in view. Periodic live refresh must **not** reset the camera. Changing route/direction (different stop sequence) runs this logic again. The **My Location** FAB still fits **route + user** in one view when pressed (with location permission).
 6. **Map → arrivals:** tapping a **stop marker** on the route map opens the **Arrivals** screen for that stop code (same as Search/Home), showing upcoming buses and times.
 7. **Arrivals at a stop (not the route origin):** when the viewed stop is **not** the **first stop** of that route (in OASA route order), the app shows **when the next service from the route’s origin** is planned. **Schedule-based** hints (`getDailySchedule`, `come` / αφετηρία, Europe/Athens, next window start) appear as their **own list row** (clock + line + “Δρομολόγιο από αφετηρία”), **not** nested under a live vehicle row, so users do not confuse them with the bus counted down in minutes above. **Fallback** when schedule data is missing: a single secondary line on the live row from live `getStopArrivals` at the origin stop. Omit when the user is already at the origin stop.
 8. Offline cache: lines and stops cached 24h, arrivals cached 30s
@@ -89,6 +90,7 @@ Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
 Arrivals → map icon → MapScreen with route polyline
 MapScreen → **tabs** — **Χάρτης** (map) / **Δρομολόγια** (timetable from `getDailySchedule` when line code is known); tabs appear once route stops have loaded successfully
+MapScreen (manual, no line yet) → map shows **nearby stop pins** from `getClosestStops` when location is available; tap pin → Arrivals
 MapScreen → tap bus → show vehicle number
 MapScreen → tap stop marker → Arrivals for that stop (including origin-departure hint when applicable; see Core Features item 7)
 

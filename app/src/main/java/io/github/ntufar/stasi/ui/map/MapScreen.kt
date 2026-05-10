@@ -113,11 +113,13 @@ private const val ROUTE_LINE_LAYER_ID = "route-line"
 private const val STOPS_SOURCE_ID = "stops-source"
 private const val STOPS_CIRCLE_PREFIX = "stops-circle-"
 private const val STOPS_LABEL_LAYER_ID = "stops-labels"
+private const val STOPS_NAME_LAYER_ID = "stops-names"
 private const val BUSES_SOURCE_ID = "buses-source"
 private const val BUSES_LAYER_ID = "buses-layer"
 private const val PROP_VEH = "vehicleNo"
 private const val PROP_STOP_CODE = "stopCode"
 private const val PROP_SEQ = "seq"
+private const val PROP_STOP_NAME = "stopName"
 private const val PROP_KIND = "kind"
 private const val PROP_BEARING = "bearing"
 private const val BUS_ICON_ID = "bus-heading-icon"
@@ -134,6 +136,8 @@ private val STOP_KINDS = listOf(
     Triple("start", Color.rgb(76, 175, 80), 11f),
     Triple("mid", Color.rgb(0, 172, 193), 9f),
     Triple("end", Color.rgb(244, 67, 54), 11f),
+    /** Closest-stop pins (manual map); same size/color as mid — labels use [STOPS_NAME_LAYER_ID]. */
+    Triple("nearby", Color.rgb(0, 172, 193), 9f),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -212,6 +216,20 @@ fun MapScreen(
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
+    val nearbyRefreshKey = userLatLng?.let { (lat, lng) ->
+        "${(lat * 400).toInt()}_${(lng * 400).toInt()}"
+    }
+    LaunchedEffect(
+        nearbyRefreshKey,
+        uiState.manualMode,
+        uiState.stops.isEmpty(),
+        uiState.isLoading,
+        uiState.error,
+    ) {
+        if (!uiState.manualMode || uiState.stops.isNotEmpty() || uiState.isLoading) return@LaunchedEffect
+        val ul = userLatLng ?: return@LaunchedEffect
+        vm.refreshNearbyForManualMap(ul.first, ul.second)
+    }
     LaunchedEffect(vm, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             vm.refreshNow()
@@ -297,6 +315,9 @@ fun MapScreen(
                     Text(stringResource(R.string.map_show))
                 }
             }
+            val mapStops = if (uiState.stops.isNotEmpty()) uiState.stops else uiState.nearbyStopsForMap
+            val nearbyMarkersOnly =
+                uiState.stops.isEmpty() && uiState.nearbyStopsForMap.isNotEmpty()
             val showRouteTabs =
                 uiState.stops.isNotEmpty() && uiState.error == null && !uiState.isLoading
             if (showRouteTabs) {
@@ -320,8 +341,9 @@ fun MapScreen(
             ) {
                 if (!showRouteTabs || uiState.routeTabIndex == 0) {
                     StasiMapLibre(
-                        stops = uiState.stops,
+                        stops = mapStops,
                         buses = uiState.buses,
+                        nearbyMarkersOnly = nearbyMarkersOnly,
                         userLatLng = userLatLng,
                         recenterSignal = recenterSignal,
                         onBusVehicleSelected = vm::selectVehicle,
@@ -568,6 +590,8 @@ private fun TimetableRowCell(row: RouteDailyTimetableRow?) {
 private fun StasiMapLibre(
     stops: List<RouteStop>,
     buses: List<BusOnRoute>,
+    /** True when [stops] are closest-stop pins, not an OASA route sequence (uniform markers). */
+    nearbyMarkersOnly: Boolean,
     userLatLng: Pair<Double, Double>?,
     recenterSignal: Int,
     onBusVehicleSelected: (String) -> Unit,
@@ -608,8 +632,8 @@ private fun StasiMapLibre(
     val mapRefState = rememberUpdatedState(mapRef)
     val userLatLngState = rememberUpdatedState(userLatLng)
     val stopsState = rememberUpdatedState(stops)
-    val stopsFingerprint = remember(stops) {
-        stops.joinToString("|") { "${it.stopCode}:${it.order}" }
+    val stopsFingerprint = remember(stops, nearbyMarkersOnly) {
+        stops.joinToString("|") { "${it.stopCode}:${it.order}" } + "|n=$nearbyMarkersOnly"
     }
     var initialCameraDoneForRoute by remember(stopsFingerprint) { mutableStateOf(false) }
 
@@ -631,7 +655,10 @@ private fun StasiMapLibre(
                         onBusSelected(veh)
                         return@addOnMapClickListener true
                     }
-                    val stopLayerIds = STOP_KINDS.map { (k, _, _) -> "$STOPS_CIRCLE_PREFIX$k" } + STOPS_LABEL_LAYER_ID
+                    val stopLayerIds =
+                        STOP_KINDS.map { (k, _, _) -> "$STOPS_CIRCLE_PREFIX$k" } +
+                            STOPS_LABEL_LAYER_ID +
+                            STOPS_NAME_LAYER_ID
                     val stopFeat = map.queryRenderedFeatures(screenPoint, *stopLayerIds.toTypedArray())
                         .firstOrNull()
                     val code = stopFeat?.getStringProperty(PROP_STOP_CODE)
@@ -652,14 +679,20 @@ private fun StasiMapLibre(
         }
     }
 
-    LaunchedEffect(styleLoaded, stops, buses) {
+    LaunchedEffect(styleLoaded, stops, buses, nearbyMarkersOnly) {
         if (!styleLoaded) return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         val routeSource = style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)
         val stopsSource = style.getSourceAs<GeoJsonSource>(STOPS_SOURCE_ID)
         val busSource = style.getSourceAs<GeoJsonSource>(BUSES_SOURCE_ID)
-        routeSource?.setGeoJson(routeFeatureCollection(stops))
-        stopsSource?.setGeoJson(stopsFeatureCollection(stops))
+        routeSource?.setGeoJson(
+            if (nearbyMarkersOnly) {
+                FeatureCollection.fromFeatures(emptyArray())
+            } else {
+                routeFeatureCollection(stops)
+            },
+        )
+        stopsSource?.setGeoJson(stopsFeatureCollection(stops, nearbyMarkersOnly = nearbyMarkersOnly))
         busSource?.setGeoJson(busFeatureCollection(buses, stops))
     }
 
@@ -696,7 +729,7 @@ private fun StasiMapLibre(
         }
     }
 
-    LaunchedEffect(styleLoaded, stops, userLatLng, stopsFingerprint) {
+    LaunchedEffect(styleLoaded, stops, userLatLng, stopsFingerprint, nearbyMarkersOnly) {
         if (!styleLoaded) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
         if (initialCameraDoneForRoute) return@LaunchedEffect
@@ -720,6 +753,12 @@ private fun StasiMapLibre(
                     500,
                 )
             }
+            initialCameraDoneForRoute = true
+            return@LaunchedEffect
+        }
+
+        if (nearbyMarkersOnly) {
+            fitCameraToStopsAndUser(map, stops, userLatLng ?: userLatLngState.value)
             initialCameraDoneForRoute = true
             return@LaunchedEffect
         }
@@ -808,6 +847,30 @@ private fun ensureStopLayers(style: Style) {
                 PropertyFactory.textHaloWidth(2f),
                 PropertyFactory.textAllowOverlap(true),
                 PropertyFactory.textIgnorePlacement(true),
+            ).withFilter(
+                Expression.any(
+                    Expression.eq(Expression.get(PROP_KIND), Expression.literal("start")),
+                    Expression.eq(Expression.get(PROP_KIND), Expression.literal("mid")),
+                    Expression.eq(Expression.get(PROP_KIND), Expression.literal("end")),
+                ),
+            ),
+        )
+    }
+    if (style.getLayer(STOPS_NAME_LAYER_ID) == null) {
+        style.addLayer(
+            SymbolLayer(STOPS_NAME_LAYER_ID, STOPS_SOURCE_ID).withProperties(
+                PropertyFactory.textField(Expression.get(PROP_STOP_NAME)),
+                PropertyFactory.textSize(11f),
+                PropertyFactory.textColor(Color.rgb(33, 33, 33)),
+                PropertyFactory.textHaloColor(Color.WHITE),
+                PropertyFactory.textHaloWidth(2f),
+                PropertyFactory.textAnchor(Expression.literal("top")),
+                PropertyFactory.textOffset(arrayOf(0f, 1.35f)),
+                PropertyFactory.textMaxWidth(14f),
+                PropertyFactory.textAllowOverlap(true),
+                PropertyFactory.textIgnorePlacement(true),
+            ).withFilter(
+                Expression.eq(Expression.get(PROP_KIND), Expression.literal("nearby")),
             ),
         )
     }
@@ -875,12 +938,17 @@ private fun routeFeatureCollection(stops: List<RouteStop>): FeatureCollection {
     return FeatureCollection.fromFeature(Feature.fromGeometry(line))
 }
 
-private fun stopsFeatureCollection(stops: List<RouteStop>): FeatureCollection {
+private fun stopsFeatureCollection(
+    stops: List<RouteStop>,
+    nearbyMarkersOnly: Boolean = false,
+): FeatureCollection {
     if (stops.isEmpty()) return FeatureCollection.fromFeatures(emptyArray())
     val sorted = stops.sortedBy { it.order }
     val last = sorted.lastIndex
     val features = sorted.mapIndexed { index, s ->
-        val kind = when (index) {
+        val kind = if (nearbyMarkersOnly) {
+            "nearby"
+        } else when (index) {
             0 -> "start"
             last -> "end"
             else -> "mid"
@@ -889,9 +957,21 @@ private fun stopsFeatureCollection(stops: List<RouteStop>): FeatureCollection {
         props.add(PROP_STOP_CODE, JsonPrimitive(s.stopCode))
         props.add(PROP_SEQ, JsonPrimitive((index + 1).toString()))
         props.add(PROP_KIND, JsonPrimitive(kind))
+        if (nearbyMarkersOnly) {
+            props.add(
+                PROP_STOP_NAME,
+                JsonPrimitive(truncateStopMapLabel(s.description.ifBlank { s.stopCode })),
+            )
+        }
         Feature.fromGeometry(Point.fromLngLat(s.lng, s.lat), props)
     }
     return FeatureCollection.fromFeatures(features.toTypedArray())
+}
+
+private fun truncateStopMapLabel(raw: String, maxChars: Int = 28): String {
+    val t = raw.trim()
+    if (t.length <= maxChars) return t
+    return t.take(maxChars - 1).trimEnd() + "…"
 }
 
 private fun busFeatureCollection(buses: List<BusOnRoute>, stops: List<RouteStop>): FeatureCollection {
@@ -1005,5 +1085,26 @@ private fun fitCameraToRoute(map: MapLibreMap, stops: List<RouteStop>) {
             CameraUpdateFactory.newLatLngZoom(LatLng(center.lat, center.lng), 12.0),
             400,
         )
+    }
+}
+
+private fun fitCameraToStopsAndUser(
+    map: MapLibreMap,
+    stops: List<RouteStop>,
+    userLatLng: Pair<Double, Double>?,
+    paddingPx: Int = 88,
+) {
+    val sorted = stops.sortedBy { it.order }
+    if (sorted.isEmpty()) return
+    val builder = LatLngBounds.Builder()
+    sorted.forEach { builder.include(LatLng(it.lat, it.lng)) }
+    userLatLng?.let { builder.include(LatLng(it.first, it.second)) }
+    try {
+        map.easeCamera(
+            CameraUpdateFactory.newLatLngBounds(builder.build(), paddingPx),
+            550,
+        )
+    } catch (_: Exception) {
+        fitCameraToRoute(map, stops)
     }
 }

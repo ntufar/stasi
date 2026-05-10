@@ -47,6 +47,11 @@ data class MapUiState(
     val timetable: RouteDailyTimetable? = null,
     val timetableLoading: Boolean = false,
     val timetableError: String? = null,
+    /**
+     * Closest stops around the user on the manual route map when no line is loaded yet
+     * ([getClosestStops]); cleared when a route is shown.
+     */
+    val nearbyStopsForMap: List<RouteStop> = emptyList(),
 )
 
 class MapViewModel(
@@ -107,10 +112,46 @@ class MapViewModel(
                 timetable = null,
                 timetableError = null,
                 timetableLoading = false,
+                nearbyStopsForMap = emptyList(),
             )
         }
         lastTimetableLineCode = null
         startRouteJob(code, refreshLineInfo = true)
+    }
+
+    /** Loads closest stops for the manual map (no route); no-op if a route is already shown. */
+    fun refreshNearbyForManualMap(lat: Double, lng: Double) {
+        val s = _uiState.value
+        if (!s.manualMode || s.stops.isNotEmpty() || s.isLoading) return
+        viewModelScope.launch {
+            val current = _uiState.value
+            if (!current.manualMode || current.stops.isNotEmpty() || current.isLoading) return@launch
+            val nearby = try {
+                withContext(Dispatchers.IO) {
+                    repository.getClosestStops(lat, lng)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                emptyList()
+            }
+            val asRoute = nearby
+                .sortedBy { it.distanceKm ?: Double.MAX_VALUE }
+                .take(20)
+                .mapIndexed { idx, n ->
+                    RouteStop(
+                        stopCode = n.stopCode,
+                        description = n.description,
+                        lat = n.lat,
+                        lng = n.lng,
+                        order = idx + 1,
+                    )
+                }
+            _uiState.update { st ->
+                if (!st.manualMode || st.stops.isNotEmpty() || st.isLoading) st
+                else st.copy(nearbyStopsForMap = asRoute)
+            }
+        }
     }
 
     /**
@@ -218,6 +259,7 @@ class MapViewModel(
                     timetableError = null,
                     timetableLoading = false,
                     internalLineCode = preservedLineCode,
+                    nearbyStopsForMap = emptyList(),
                 )
             }
             lastTimetableLineCode = null
@@ -263,6 +305,7 @@ class MapViewModel(
                         appliedRouteCode = routeForLive,
                         isLoading = false,
                         error = null,
+                        nearbyStopsForMap = emptyList(),
                     )
                 }
                 if (refreshLineInfo || _uiState.value.directions.isEmpty()) {
