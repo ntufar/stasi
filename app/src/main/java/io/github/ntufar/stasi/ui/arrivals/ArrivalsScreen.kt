@@ -2,8 +2,10 @@ package io.github.ntufar.stasi.ui.arrivals
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -117,21 +119,34 @@ fun ArrivalsScreen(
                             .clickable(enabled = a.routeCode.isNotBlank()) {
                                 onOpenMap(a.routeCode)
                             }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                     ) {
+                        val scheme = MaterialTheme.colorScheme
                         Text(
                             minutesText,
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Bold,
+                            color = if (a.minutes >= 999) scheme.onSurfaceVariant else scheme.primary,
                         )
-                        Text(a.lineLabel, style = MaterialTheme.typography.titleMedium)
-                        Text(a.destinationLabel, style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            a.lineLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = scheme.onSurface,
+                        )
+                        Text(
+                            a.destinationLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = scheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
                         if (originText != null) {
                             Text(
                                 originText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = scheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
                         }
                     }
