@@ -9,6 +9,7 @@
     <string name="cd_favorite">Αγαπημένο</string>
     <string name="cd_swap_direction">Αλλαγή κατεύθυνσης</string>
     <string name="cd_my_location">Τρέχουσα τοποθεσία</string>
+    <string name="cd_alert">Ειδοποίηση άφιξης</string>
 
     <string name="nav_home">Αρχική</string>
     <string name="nav_search">Αναζήτηση</string>
@@ -63,4 +64,10 @@
     <string name="map_error_timeout">Λήξη χρόνου· ελέγξτε το δίκτυο ή δοκιμάστε ξανά.</string>
     <string name="map_error_no_stops">Δεν βρέθηκαν στάσεις για τη διαδρομή %1$s.</string>
     <string name="map_error_route_load">Σφάλμα φόρτωσης διαδρομής.</string>
+
+    <string name="notification_channel_name">Ειδοποιήσεις Άφιξης</string>
+    <string name="notification_channel_description">Ειδοποιήσεις όταν το λεωφορείο σας φτάνει</string>
+    <string name="notification_arrival_title">%1$s φτάνει σύντομα</string>
+    <string name="notification_arrival_text">Φτάνει σε %1$d΄ στο %2$s</string>
+    <string name="notification_arrival_now">Φτάνει τώρα στο %1$s</string>
 </resources>

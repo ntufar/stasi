@@ -1,5 +1,10 @@
 package io.github.ntufar.stasi.ui.arrivals
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,15 +37,19 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import io.github.ntufar.stasi.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -57,13 +68,20 @@ fun ArrivalsScreen(
     onOpenMap: (routeCode: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
     val vm: ArrivalsViewModel = viewModel(
         key = stopCode,
         factory = remember(stopCode, container) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    ArrivalsViewModel(stopCode, container.oasaRepository, container.favoritesRepository) as T
+                    ArrivalsViewModel(
+                        stopCode,
+                        container.oasaRepository,
+                        container.favoritesRepository,
+                        container.alertsRepository,
+                        context.applicationContext,
+                    ) as T
             }
         },
     )
@@ -77,6 +95,32 @@ fun ArrivalsScreen(
     LaunchedEffect(vm, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             vm.refreshNow()
+        }
+    }
+
+    var pendingAlertArgs by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            pendingAlertArgs?.let { (rc, vc, ll) -> vm.toggleAlert(rc, vc, ll) }
+        }
+        pendingAlertArgs = null
+    }
+    fun onBellTap(routeCode: String, vehCode: String, lineLabel: String) {
+        val alertKey = "$routeCode:$vehCode"
+        if (alertKey in ui.activeAlertKeys) {
+            vm.toggleAlert(routeCode, vehCode, lineLabel)
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingAlertArgs = Triple(routeCode, vehCode, lineLabel)
+            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            vm.toggleAlert(routeCode, vehCode, lineLabel)
         }
     }
 
@@ -151,60 +195,81 @@ fun ArrivalsScreen(
                                     stringResource(R.string.minutes_short, om),
                                 )
                             }
-                            Column(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable(enabled = a.routeCode.isNotBlank()) {
-                                        onOpenMap(a.routeCode)
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top,
                             ) {
-                                val scheme = MaterialTheme.colorScheme
-                                Text(
-                                    minutesText,
-                                    fontSize = 48.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (a.minutes >= 999) scheme.onSurfaceVariant else scheme.primary,
-                                )
-                                Spacer(Modifier.height(10.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                Column(
+                                    Modifier
+                                        .weight(1f)
+                                        .clickable(enabled = a.routeCode.isNotBlank()) {
+                                            onOpenMap(a.routeCode)
+                                        }
+                                        .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
                                 ) {
+                                    val scheme = MaterialTheme.colorScheme
                                     Text(
-                                        a.lineLabel,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = scheme.onSurface,
+                                        minutesText,
+                                        fontSize = 48.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (a.minutes >= 999) scheme.onSurfaceVariant else scheme.primary,
                                     )
-                                    if (a.isLastBusWarning) {
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = Color(0xFFFFA726),
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.arrivals_last_service_warning),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.Black,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                            )
+                                    Spacer(Modifier.height(10.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            a.lineLabel,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        if (a.isLastBusWarning) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color(0xFFFFA726),
+                                            ) {
+                                                Text(
+                                                    text = stringResource(R.string.arrivals_last_service_warning),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.Black,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                                Text(
-                                    a.destinationLabel,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = scheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 6.dp),
-                                )
-                                if (originText != null) {
                                     Text(
-                                        originText,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = scheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 8.dp),
+                                        a.destinationLabel,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 6.dp),
                                     )
+                                    if (originText != null) {
+                                        Text(
+                                            originText,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 8.dp),
+                                        )
+                                    }
+                                }
+                                if (a.routeCode.isNotBlank()) {
+                                    val alertKey = "${a.routeCode}:${a.vehCode}"
+                                    val isAlertActive = alertKey in ui.activeAlertKeys
+                                    IconButton(
+                                        onClick = { onBellTap(a.routeCode, a.vehCode, a.lineLabel) },
+                                        modifier = Modifier.padding(top = 12.dp, end = 4.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isAlertActive) Icons.Filled.Notifications
+                                            else Icons.Outlined.NotificationsNone,
+                                            contentDescription = stringResource(R.string.cd_alert),
+                                            tint = if (isAlertActive) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }

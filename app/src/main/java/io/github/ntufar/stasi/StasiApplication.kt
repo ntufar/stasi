@@ -2,6 +2,7 @@ package io.github.ntufar.stasi
 
 import android.app.Application
 import io.github.ntufar.stasi.di.AppContainer
+import io.github.ntufar.stasi.util.NotificationHelper
 import org.maplibre.android.MapLibre
 
 class StasiApplication : Application() {
@@ -12,7 +13,6 @@ class StasiApplication : Application() {
         super.onCreate()
         MapLibre.getInstance(this)
         container = AppContainer(this)
-        // Do not run syncCatalogIncremental here: it competes with map/search API calls on rate limits.
-        // Search screen and cache TTL trigger sync; map uses ensureLinesCatalogForResolve when needed.
+        NotificationHelper(this).createChannel()
     }
 }

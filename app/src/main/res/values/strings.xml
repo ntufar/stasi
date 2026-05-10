@@ -9,6 +9,7 @@
     <string name="cd_favorite">Favorite</string>
     <string name="cd_swap_direction">Switch direction</string>
     <string name="cd_my_location">My location</string>
+    <string name="cd_alert">Set arrival alert</string>
 
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
@@ -63,4 +64,10 @@
     <string name="map_error_timeout">Timed out—check your network or try again.</string>
     <string name="map_error_no_stops">No stops found for route %1$s.</string>
     <string name="map_error_route_load">Could not load route.</string>
+
+    <string name="notification_channel_name">Arrival Alerts</string>
+    <string name="notification_channel_description">Notifications when your bus is arriving soon</string>
+    <string name="notification_arrival_title">%1$s arriving soon</string>
+    <string name="notification_arrival_text">Arriving in %1$d min at %2$s</string>
+    <string name="notification_arrival_now">Arriving now at %1$s</string>
 </resources>

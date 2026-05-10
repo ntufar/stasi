@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.15 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.16 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -33,11 +33,18 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
     - **Arrivals screen:** an amber chip ("Last service" / "Τελευταίο") appears next to the line label for affected routes.
     - **Timetable tab (MapScreen):** an amber banner appears below the title, and the last origin departure row is highlighted with an amber background.
     - The warning activates when `now` is within 30 min of the last time-window end in origin departures, or up to 2 hours past it (service ended). Computed per line using `Europe/Athens` timezone.
+11. **Arrival Notifications:** one-shot alerts for individual buses:
+    - **Bell icon** on each live arrival row (filled when alert is active, outlined otherwise).
+    - Tap the bell → schedules a **WorkManager** background job that polls `getStopArrivals` every 45 seconds.
+    - When `minutes <= 5` for the target route, a **local notification** fires (high priority, vibration) and the alert auto-cancels.
+    - Alerts auto-expire after **30 minutes** if the bus never reaches threshold (delayed/cancelled service).
+    - **POST_NOTIFICATIONS** permission requested on Android 13+ on first bell tap.
+    - Tap the notification → opens Arrivals screen for that stop.
+    - Privacy: no server, no accounts — all local WorkManager + DataStore.
 
 ## 4. Out of Scope for MVP
 - Ticket purchase
 - Trip planning across multiple lines
-- Notifications
 
 ## 5. Tech Stack
 - Language: Kotlin 1.9

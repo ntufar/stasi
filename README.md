@@ -27,12 +27,6 @@ Design defaults: dark / AMOLED-friendly Material 3. Primary UI language Greek wi
 
 **Not in scope (MVP):** ticket purchase, multi-leg journey planner, push notifications.
 
-## Screenshot
-
-Route map: line polyline, numbered stops, your location when permitted, and the recenter control (example: **Γραμμή 224**).
-
-![Stasi route map showing a bus line, numbered stop markers, user location, and locate FAB](docs/screenshot-route-map.png)
-
 ---
 
 ## Tech stack
@@ -150,7 +144,6 @@ app/src/main/java/io/github/ntufar/stasi/
   ui/         # Compose screens & theme
   MainActivity.kt, StasiApp.kt, StasiApplication.kt
 docs/SPEC.md              # Product & technical specification
-docs/screenshot-route-map.png  # README screenshot asset
 ```
 
 ---

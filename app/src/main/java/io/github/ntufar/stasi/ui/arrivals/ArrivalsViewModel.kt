@@ -1,10 +1,17 @@
 package io.github.ntufar.stasi.ui.arrivals
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.workDataOf
+import androidx.work.WorkManager
+import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.ArrivalDetail
 import io.github.ntufar.stasi.data.repository.FavoritesRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.workers.ArrivalAlertWorker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,12 +28,15 @@ data class ArrivalsUiState(
     val isFavorite: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
+    val activeAlertKeys: Set<String> = emptySet(),
 )
 
 class ArrivalsViewModel(
     val stopCode: String,
     private val repository: OasaRepository,
     private val favoritesRepository: FavoritesRepository,
+    private val alertsRepository: AlertsRepository,
+    private val appContext: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArrivalsUiState(stopCode = stopCode))
@@ -41,6 +51,15 @@ class ArrivalsViewModel(
                 delay(POLL_INTERVAL_MS)
             }
         }
+        viewModelScope.launch {
+            alertsRepository.activeAlerts.collect { alerts ->
+                val keys = alerts
+                    .filter { it.stopCode == stopCode }
+                    .map { "${it.routeCode}:${it.vehCode}" }
+                    .toSet()
+                _uiState.update { it.copy(activeAlertKeys = keys) }
+            }
+        }
     }
 
     fun toggleFavorite() {
@@ -50,11 +69,33 @@ class ArrivalsViewModel(
         }
     }
 
-    /**
-     * Out-of-cycle refresh used by `ArrivalsScreen` when the screen returns to RESUMED, so
-     * arrivals appear up-to-date the moment the user navigates back instead of waiting up to
-     * [POLL_INTERVAL_MS] for the next tick.
-     */
+    fun toggleAlert(routeCode: String, vehCode: String, lineLabel: String) {
+        viewModelScope.launch {
+            if (alertsRepository.isAlertActive(stopCode, routeCode, vehCode)) {
+                alertsRepository.removeAlert(stopCode, routeCode, vehCode)
+                WorkManager.getInstance(appContext)
+                    .cancelUniqueWork(ArrivalAlertWorker.uniqueWorkName(stopCode, routeCode, vehCode))
+            } else {
+                alertsRepository.addAlert(stopCode, routeCode, vehCode)
+                val request = OneTimeWorkRequestBuilder<ArrivalAlertWorker>()
+                    .setInputData(workDataOf(
+                        ArrivalAlertWorker.KEY_STOP_CODE to stopCode,
+                        ArrivalAlertWorker.KEY_ROUTE_CODE to routeCode,
+                        ArrivalAlertWorker.KEY_VEH_CODE to vehCode,
+                        ArrivalAlertWorker.KEY_LINE_LABEL to lineLabel,
+                        ArrivalAlertWorker.KEY_STOP_TITLE to _uiState.value.title.ifBlank { stopCode },
+                    ))
+                    .build()
+                WorkManager.getInstance(appContext)
+                    .enqueueUniqueWork(
+                        ArrivalAlertWorker.uniqueWorkName(stopCode, routeCode, vehCode),
+                        ExistingWorkPolicy.REPLACE,
+                        request,
+                    )
+            }
+        }
+    }
+
     fun refreshNow() {
         viewModelScope.launch {
             fetchOnce()
@@ -93,10 +134,6 @@ class ArrivalsViewModel(
     }
 }
 
-/**
- * Flat list for the arrivals screen: live predictions plus, when applicable, a **separate** row for
- * the next scheduled origin departure (not nested under a specific vehicle row).
- */
 sealed class ArrivalListRow {
     data class Live(val detail: ArrivalDetail) : ArrivalListRow()
 
