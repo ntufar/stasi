@@ -155,6 +155,12 @@ docs/screenshot-route-map.png  # README screenshot asset
 
 ---
 
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
 ## Contributing
 
 Issues and pull requests are welcome. For releases, update **CHANGELOG.md** under **`[Unreleased]`**, then add a dated **`[x.y.z]`** section when you cut a tag.
