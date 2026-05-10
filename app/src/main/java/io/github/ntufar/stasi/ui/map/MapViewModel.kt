@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.ntufar.stasi.data.repository.BusOnRoute
 import io.github.ntufar.stasi.data.repository.LineRouteInfo
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.data.repository.RouteDailyTimetable
 import io.github.ntufar.stasi.BuildConfig
 import io.github.ntufar.stasi.data.repository.RouteDirection
 import io.github.ntufar.stasi.data.repository.RouteStop
@@ -37,6 +38,13 @@ data class MapUiState(
     val lineDescr: String? = null,
     /** All known directions (routes) for the current line. */
     val directions: List<RouteDirection> = emptyList(),
+    /** Internal OASA line code for timetable API ([getDailySchedule]); not the public line number. */
+    val internalLineCode: String? = null,
+    /** 0 = map, 1 = timetable (only when route stops are shown). */
+    val routeTabIndex: Int = 0,
+    val timetable: RouteDailyTimetable? = null,
+    val timetableLoading: Boolean = false,
+    val timetableError: String? = null,
 )
 
 class MapViewModel(
@@ -48,6 +56,8 @@ class MapViewModel(
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
     private var routeJob: Job? = null
+    private var timetableJob: Job? = null
+    private var lastTimetableLineCode: String? = null
 
     init {
         if (presetRouteCode != null) {
@@ -85,8 +95,14 @@ class MapViewModel(
                 lineLabel = null,
                 lineDescr = null,
                 directions = emptyList(),
+                internalLineCode = null,
+                routeTabIndex = 0,
+                timetable = null,
+                timetableError = null,
+                timetableLoading = false,
             )
         }
+        lastTimetableLineCode = null
         startRouteJob(code, refreshLineInfo = true)
     }
 
@@ -104,9 +120,69 @@ class MapViewModel(
                 appliedRouteCode = target,
                 routeCodeInput = target,
                 selectedVehicleNo = null,
+                routeTabIndex = 0,
+                timetable = null,
+                timetableError = null,
+                timetableLoading = false,
             )
         }
+        lastTimetableLineCode = null
         startRouteJob(target, refreshLineInfo = false)
+    }
+
+    fun onRouteTabSelected(index: Int) {
+        val idx = index.coerceIn(0, 1)
+        _uiState.update { it.copy(routeTabIndex = idx) }
+        if (idx == 1) {
+            fetchTimetableIfNeeded()
+        }
+    }
+
+    private fun fetchTimetableIfNeeded() {
+        val line = _uiState.value.internalLineCode?.trim().orEmpty()
+        if (line.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    timetableLoading = false,
+                    timetableError = "Δεν βρέθηκε κωδικός γραμμής για δρομολόγια.",
+                    timetable = null,
+                )
+            }
+            return
+        }
+        if (line == lastTimetableLineCode && _uiState.value.timetable != null) return
+        timetableJob?.cancel()
+        timetableJob = viewModelScope.launch {
+            _uiState.update { it.copy(timetableLoading = true, timetableError = null) }
+            try {
+                val t = withContext(Dispatchers.IO) {
+                    repository.getRouteDailyTimetable(line)
+                }
+                lastTimetableLineCode = line
+                val empty = t.originDepartures.isEmpty() && t.terminusDepartures.isEmpty()
+                _uiState.update {
+                    it.copy(
+                        timetable = t,
+                        timetableLoading = false,
+                        timetableError = if (empty) {
+                            "Δεν βρέθηκαν δεδομένα δρομολογίου."
+                        } else {
+                            null
+                        },
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        timetableLoading = false,
+                        timetable = null,
+                        timetableError = e.message ?: "Σφάλμα φόρτωσης δρομολογίου.",
+                    )
+                }
+            }
+        }
     }
 
     fun toggleDirection() {
@@ -122,9 +198,22 @@ class MapViewModel(
     private fun startRouteJob(code: String, refreshLineInfo: Boolean) {
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
+            val keepLineMeta = !refreshLineInfo && _uiState.value.directions.isNotEmpty()
+            val preservedLineCode =
+                if (keepLineMeta) _uiState.value.internalLineCode else null
             _uiState.update { s ->
-                s.copy(isLoading = true, error = null, buses = emptyList())
+                s.copy(
+                    isLoading = true,
+                    error = null,
+                    buses = emptyList(),
+                    routeTabIndex = 0,
+                    timetable = null,
+                    timetableError = null,
+                    timetableLoading = false,
+                    internalLineCode = preservedLineCode,
+                )
             }
+            lastTimetableLineCode = null
             try {
                 if (BuildConfig.DEBUG) {
                     Log.d("StasiMap", "fetch route stops for \"$code\"")
@@ -180,14 +269,32 @@ class MapViewModel(
                     } catch (_: Exception) {
                         null
                     }
+                    val lc = info?.lineCode?.trim().orEmpty().ifBlank { null }
+                    val fallbackLc = if (lc == null) {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                repository.lineCodeForRoute(routeForLive)
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                    val resolvedLineCode = lc ?: fallbackLc
                     if (info != null) {
                         _uiState.update {
                             it.copy(
                                 lineLabel = info.lineId.ifBlank { info.lineCode },
                                 lineDescr = info.lineDescr.ifBlank { null },
                                 directions = info.directions,
+                                internalLineCode = resolvedLineCode,
                             )
                         }
+                    } else if (resolvedLineCode != null) {
+                        _uiState.update { it.copy(internalLineCode = resolvedLineCode) }
                     }
                 }
                 while (isActive) {
@@ -262,6 +369,7 @@ class MapViewModel(
 
     override fun onCleared() {
         routeJob?.cancel()
+        timetableJob?.cancel()
         super.onCleared()
     }
 

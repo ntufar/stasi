@@ -3,6 +3,7 @@ package io.github.ntufar.stasi.data.repository
 import io.github.ntufar.stasi.data.api.OasaApi
 import io.github.ntufar.stasi.data.api.OasaArrivalJson
 import io.github.ntufar.stasi.data.api.OasaClosestStopJson
+import io.github.ntufar.stasi.data.api.OasaDailyScheduleSlotJson
 import io.github.ntufar.stasi.data.api.OasaStopXYJson
 import io.github.ntufar.stasi.data.api.OasaWebRouteForStopJson
 import io.github.ntufar.stasi.data.api.OasaWebStopJson
@@ -62,6 +63,21 @@ data class LineRouteInfo(
     val lineId: String,
     val lineDescr: String,
     val directions: List<RouteDirection>,
+)
+
+/** One or two time bands from OASA [getDailySchedule] for a single direction bucket (come/go). */
+data class RouteDailyTimetableRow(
+    val primaryRange: String,
+    val secondaryRange: String?,
+)
+
+/**
+ * Planned daily time windows from the operator ([getDailySchedule]).
+ * [originDepartures] is the API `come` bucket (documented as αφετηρία); [terminusDepartures] is `go` (τέρμα).
+ */
+data class RouteDailyTimetable(
+    val originDepartures: List<RouteDailyTimetableRow>,
+    val terminusDepartures: List<RouteDailyTimetableRow>,
 )
 
 data class ArrivalDetail(
@@ -646,6 +662,36 @@ class OasaRepository(
         }
     }
 
+    /** Internal OASA line code for [getRouteDailyTimetable], from cache when available. */
+    suspend fun lineCodeForRoute(routeCode: String): String? {
+        val rc = routeCode.trim().ifBlank { return null }
+        return try {
+            dao.routeByCode(rc)?.lineCode?.trim()?.ifBlank { null }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Fetches [getDailySchedule] for the given internal [lineCode] (same as [LineRouteInfo.lineCode] /
+     * [CachedLineEntity.lineCode], not the public line number).
+     */
+    suspend fun getRouteDailyTimetable(lineCode: String): RouteDailyTimetable {
+        val lc = lineCode.trim().ifBlank { return RouteDailyTimetable(emptyList(), emptyList()) }
+        return try {
+            val raw = limiter.run(EndpointRateLimiter.EP_GET_DAILY_SCHEDULE) {
+                api.getDailySchedule(lineCode = lc)
+            }
+            RouteDailyTimetable(
+                originDepartures = mapDailyScheduleSlots(raw.come),
+                terminusDepartures = mapDailyScheduleSlots(raw.go),
+            )
+        } catch (e: Exception) {
+            rethrowIfCancellation(e)
+            RouteDailyTimetable(emptyList(), emptyList())
+        }
+    }
+
     suspend fun getClosestStops(lat: Double, lng: Double): List<NearbyStop> {
         return try {
             val raw = limiter.run(EndpointRateLimiter.EP_CLOSEST_STOPS) {
@@ -753,6 +799,46 @@ private fun List<OasaWebRouteForStopJson>.routeMetaByRouteCode(): Map<String, Ro
             routeDescr = j.routeDescr?.trim().orEmpty(),
         )
     }.toMap()
+
+private fun mapDailyScheduleSlots(slots: List<OasaDailyScheduleSlotJson>?): List<RouteDailyTimetableRow> {
+    if (slots.isNullOrEmpty()) return emptyList()
+    return slots
+        .sortedBy { it.sddSort?.toInt() ?: 0 }
+        .mapNotNull { slotToTimetableRow(it) }
+}
+
+private fun slotPrimaryStart(slot: OasaDailyScheduleSlotJson): String? =
+    slot.sdeStart1?.trim()?.takeIf { it.isNotBlank() }
+        ?: slot.sddStart1?.trim()?.takeIf { it.isNotBlank() }
+
+private fun slotToTimetableRow(slot: OasaDailyScheduleSlotJson): RouteDailyTimetableRow? {
+    val p1 = formatOasaScheduleRange(slotPrimaryStart(slot), slot.sdeEnd1)
+    val p2 = formatOasaScheduleRange(slot.sdeStart2, slot.sdeEnd2)
+    return when {
+        p1 != null && p2 != null -> RouteDailyTimetableRow(p1, p2)
+        p1 != null -> RouteDailyTimetableRow(p1, null)
+        p2 != null -> RouteDailyTimetableRow(p2, null)
+        else -> null
+    }
+}
+
+private fun formatOasaScheduleRange(startRaw: String?, endRaw: String?): String? {
+    val start = oasaScheduleTimeToHm(startRaw) ?: return null
+    val end = oasaScheduleTimeToHm(endRaw) ?: return null
+    return "$start–$end"
+}
+
+/** OASA uses a dummy date plus wall-clock (e.g. `1900-01-01 04:15:00`). */
+private fun oasaScheduleTimeToHm(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    val tail = raw.trim().substringAfterLast(' ', missingDelimiterValue = "").ifBlank { return null }
+    val noFrac = tail.substringBefore('.')
+    val parts = noFrac.split(':')
+    if (parts.size < 2) return null
+    val h = parts[0].toIntOrNull() ?: return null
+    val m = parts[1].toIntOrNull() ?: return null
+    return "%02d:%02d".format(h, m)
+}
 
 private fun OasaStopXYJson.descrValue(): String =
     stopDescr?.trim().orEmpty().ifBlank { stopDescrAlt?.trim().orEmpty() }

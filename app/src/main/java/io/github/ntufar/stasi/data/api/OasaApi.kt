@@ -59,6 +59,13 @@ interface OasaApi {
         @Query("p1") lat: String,
         @Query("p2") lng: String,
     ): List<OasaClosestStopJson>
+
+    /** [getDailySchedule](https://oasa-telematics-api.readthedocs.io/en/latest/getDailySchedule.html) — daily time bands per internal line code. */
+    @POST("api/")
+    suspend fun getDailySchedule(
+        @Query("act") act: String = "getDailySchedule",
+        @Query("line_code") lineCode: String,
+    ): OasaDailyScheduleResponseJson
 }
 
 fun createOasaApi(): OasaApi {

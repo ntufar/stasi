@@ -13,9 +13,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,8 +34,11 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -60,6 +67,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.data.repository.BusOnRoute
+import io.github.ntufar.stasi.data.repository.RouteDailyTimetable
+import io.github.ntufar.stasi.data.repository.RouteDailyTimetableRow
 import io.github.ntufar.stasi.data.repository.RouteStop
 import io.github.ntufar.stasi.di.LocalAppContainer
 import com.google.android.gms.location.LocationCallback
@@ -267,59 +276,86 @@ fun MapScreen(
                     Text("Εμφάνιση")
                 }
             }
+            val showRouteTabs =
+                uiState.stops.isNotEmpty() && uiState.error == null && !uiState.isLoading
+            if (showRouteTabs) {
+                PrimaryTabRow(selectedTabIndex = uiState.routeTabIndex) {
+                    Tab(
+                        selected = uiState.routeTabIndex == 0,
+                        onClick = { vm.onRouteTabSelected(0) },
+                        text = { Text("Χάρτης") },
+                    )
+                    Tab(
+                        selected = uiState.routeTabIndex == 1,
+                        onClick = { vm.onRouteTabSelected(1) },
+                        text = { Text("Δρομολόγια") },
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
             ) {
-                StasiMapLibre(
-                    stops = uiState.stops,
-                    buses = uiState.buses,
-                    userLatLng = userLatLng,
-                    recenterSignal = recenterSignal,
-                    onBusVehicleSelected = vm::selectVehicle,
-                    onStopSelected = onStopSelected,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                FloatingActionButton(
-                    onClick = {
-                        if (!hasAnyLocationPermission(context)) {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
-                        } else {
-                            recenterSignal++
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp),
-                ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "Τρέχουσα τοποθεσία")
-                }
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp),
+                if (!showRouteTabs || uiState.routeTabIndex == 0) {
+                    StasiMapLibre(
+                        stops = uiState.stops,
+                        buses = uiState.buses,
+                        userLatLng = userLatLng,
+                        recenterSignal = recenterSignal,
+                        onBusVehicleSelected = vm::selectVehicle,
+                        onStopSelected = onStopSelected,
+                        modifier = Modifier.fillMaxSize(),
                     )
-                }
-                uiState.error?.let { err ->
-                    Text(
-                        text = err,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(16.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.errorContainer,
-                                shape = RoundedCornerShape(8.dp),
-                            )
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    if (uiState.routeTabIndex == 0) {
+                        FloatingActionButton(
+                            onClick = {
+                                if (!hasAnyLocationPermission(context)) {
+                                    permissionLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                                        ),
+                                    )
+                                } else {
+                                    recenterSignal++
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp),
+                        ) {
+                            Icon(Icons.Default.MyLocation, contentDescription = "Τρέχουσα τοποθεσία")
+                        }
+                    }
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp),
+                        )
+                    }
+                    uiState.error?.let { err ->
+                        Text(
+                            text = err,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(16.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    shape = RoundedCornerShape(8.dp),
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                } else {
+                    RouteTimetablePanel(
+                        loading = uiState.timetableLoading,
+                        error = uiState.timetableError,
+                        timetable = uiState.timetable,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
@@ -337,6 +373,142 @@ fun MapScreen(
             title = { Text("Όχημα") },
             text = { Text("Αριθμός οχήματος: $veh") },
         )
+    }
+}
+
+@Composable
+private fun RouteTimetablePanel(
+    loading: Boolean,
+    error: String?,
+    timetable: RouteDailyTimetable?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
+    ) {
+        when {
+            loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+            }
+            error != null -> {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+            }
+            timetable != null -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    item {
+                        Text(
+                            text = "Ημερήσιο πρόγραμμα",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    item {
+                        Text(
+                            text = "Αφετηρία",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                    if (timetable.originDepartures.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Δεν υπάρχουν δεδομένα.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        itemsIndexed(
+                            timetable.originDepartures,
+                            key = { ix, row -> "o-$ix-${row.primaryRange}" },
+                        ) { _, row ->
+                            TimetableRow(row)
+                        }
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Τέρμα",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                    if (timetable.terminusDepartures.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Δεν υπάρχουν δεδομένα.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        itemsIndexed(
+                            timetable.terminusDepartures,
+                            key = { ix, row -> "t-$ix-${row.primaryRange}" },
+                        ) { _, row ->
+                            TimetableRow(row)
+                        }
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "Τα ωράρια προέρχονται από την OASA (getDailySchedule)· χρονικά παράθυρα, όχι αναχωρήσεις ανά δρομολόγιο.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            else -> {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimetableRow(row: RouteDailyTimetableRow) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+    ) {
+        Text(
+            text = row.primaryRange,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        row.secondaryRange?.let { sec ->
+            Text(
+                text = sec,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

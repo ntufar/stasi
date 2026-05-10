@@ -66,3 +66,19 @@ data class OasaClosestStopJson(
     @SerializedName("StopLng") val stopLng: String?,
     @SerializedName("distance") val distance: String?,
 )
+
+data class OasaDailyScheduleResponseJson(
+    @SerializedName("come") val come: List<OasaDailyScheduleSlotJson>?,
+    @SerializedName("go") val go: List<OasaDailyScheduleSlotJson>?,
+)
+
+data class OasaDailyScheduleSlotJson(
+    @SerializedName("line_descr") val lineDescr: String?,
+    @SerializedName("sde_start1") val sdeStart1: String?,
+    @SerializedName("sde_end1") val sdeEnd1: String?,
+    @SerializedName("sde_start2") val sdeStart2: String?,
+    @SerializedName("sde_end2") val sdeEnd2: String?,
+    @SerializedName("sdd_start1") val sddStart1: String?,
+    /** Sort order within the section; API may send a number. */
+    @SerializedName("sdd_sort") val sddSort: Number?,
+)

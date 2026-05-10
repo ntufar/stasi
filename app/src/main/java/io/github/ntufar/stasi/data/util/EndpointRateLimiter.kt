@@ -44,6 +44,7 @@ class EndpointRateLimiter(private val minIntervalMs: Long = 1_200L) {
         const val EP_WEB_ROUTES_FOR_STOP = "webRoutesForStop"
         const val EP_BUS_LOCATION = "getBusLocation"
         const val EP_CLOSEST_STOPS = "getClosestStops"
+        const val EP_GET_DAILY_SCHEDULE = "getDailySchedule"
 
         /** One pacing bucket per line so catalog sync does not serialize every line onto one queue. */
         fun gateWebGetRoutes(lineCode: String): String =

@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.4 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.5 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -19,6 +19,7 @@ Primary language: Greek UI, with English fallback.
 3. Arrivals screen: big minutes, line ID, destination; optional **origin departure** line when the stop is not that route’s first stop (see item 7)
 4. Nearby stops using GPS, sorted by distance
 5. Route map: draw **all route stops** on the map (not only the polyline), with **clear direction of travel**:
+   - **Tabs** when a route has loaded: **Χάρτης** (live map) and **Δρομολόγια** (daily timetable from OASA `getDailySchedule` using the line’s internal `line_code`; **Αφετηρία** / **Τέρμα** sections map to API `come` / `go` time windows);
    - stops ordered along the route with **sequence numbers** (1 … N);
    - **first stop** (departure) and **last stop** (terminus) visually distinct from middle stops (e.g. color/size);
    - **live buses** shown with **heading** (arrow or rotated icon) approximating direction toward the next segment of the route.
@@ -53,6 +54,7 @@ Endpoints:
 - getStopArrivals?p1=STOP_CODE → List<Arrival> {line_code, route_descr, btime2}
 - getBusLocation?p1=ROUTE_CODE → List<Bus> {CS_LAT, CS_LNG, VEH_NO}
 - getClosestStops?p1=LAT&p2=LNG → List<Stop>
+- getDailySchedule?line_code=LINE_CODE → JSON object `{ come: [...], go: [...] }` (daily time bands; internal line code, not public line number)
 
 Rate limit: max 1 request per 5s per endpoint per user. Cache aggressively.
 
@@ -82,6 +84,7 @@ io.github.ntufar.stasi/
 Home → tap favorite → Arrivals
 Home → search icon → Search → select stop → Arrivals
 Arrivals → map icon → MapScreen with route polyline
+MapScreen → **tabs** — **Χάρτης** (map) / **Δρομολόγια** (timetable from `getDailySchedule` when line code is known); tabs appear once route stops have loaded successfully
 MapScreen → tap bus → show vehicle number
 MapScreen → tap stop marker → Arrivals for that stop (including origin-departure hint when applicable; see Core Features item 7)
 
@@ -114,6 +117,7 @@ Design rules:
 - User opens app, sees favorite stop with correct minutes within 1s
 - Search "syntagma" finds "ΣΥΝΤΑΓΜΑ"
 - Map shows line 140 **polyline and stop markers** (numbered, direction clear), updates bus positions periodically
+- On MapScreen with a loaded route, **Δρομολόγια** tab shows timetable sections (Αφετηρία / Τέρμα) when the API returns data
 - On first load of a route on the map, the camera **prioritizes the user’s location** (zoom ~15) when GPS is available; otherwise the route fits in view
 - Tapping a stop on the map opens arrivals for that stop
 - At a non-origin stop, arrivals list shows **origin departure** information for each route where data is available
