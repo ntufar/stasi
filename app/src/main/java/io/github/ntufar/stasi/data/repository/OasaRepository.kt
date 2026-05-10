@@ -102,6 +102,8 @@ data class ArrivalDetail(
     val originStopDescription: String? = null,
     /** Next scheduled origin departure wall clock (Europe/Athens) from `come` windows when known. */
     val originScheduleClock: String? = null,
+    /** True when the line's last scheduled service window is ending within [LAST_BUS_WARNING_THRESHOLD_MINUTES]. */
+    val isLastBusWarning: Boolean = false,
 )
 
 data class NearbyStop(
@@ -353,7 +355,7 @@ class OasaRepository(
             timetableByLine[lc] = getRouteDailyTimetable(lc)
         }
         val hintByRoute = mutableMapOf<String, Pair<String, Int>>()
-        for ((route, originStop) in originByRoute) {
+        for ((route, _) in originByRoute) {
             val lc = lineCodeForRoute(route) ?: continue
             val tt = timetableByLine[lc] ?: continue
             val next = nextOriginScheduleStart(tt, now) ?: continue
@@ -413,6 +415,30 @@ class OasaRepository(
                 originDepartureMinutes = mins,
                 originStopDescription = labelFor(originStop),
             )
+        }
+    }
+
+    suspend fun enrichArrivalsWithLastBusWarning(
+        arrivals: List<ArrivalDetail>,
+    ): List<ArrivalDetail> {
+        if (arrivals.isEmpty()) return arrivals
+        val zone = ZoneId.of("Europe/Athens")
+        val now = ZonedDateTime.now(zone)
+        val lineCodes = arrivals.mapNotNull { lineCodeForRoute(it.routeCode) }.distinct()
+        if (lineCodes.isEmpty()) return arrivals
+        val warningByLine = mutableMapOf<String, Boolean>()
+        for (lc in lineCodes) {
+            val tt = try {
+                getRouteDailyTimetable(lc)
+            } catch (_: Exception) {
+                continue
+            }
+            warningByLine[lc] = isLastBusApproaching(tt, now)
+        }
+        return arrivals.map { arr ->
+            val lc = lineCodeForRoute(arr.routeCode) ?: return@map arr
+            val warn = warningByLine[lc] ?: false
+            if (warn) arr.copy(isLastBusWarning = true) else arr
         }
     }
 
@@ -744,6 +770,12 @@ class OasaRepository(
         }
     }
 
+    fun checkLastBusWarning(timetable: RouteDailyTimetable): Boolean {
+        val zone = ZoneId.of("Europe/Athens")
+        val now = ZonedDateTime.now(zone)
+        return isLastBusApproaching(timetable, now)
+    }
+
     suspend fun getClosestStops(lat: Double, lng: Double): List<NearbyStop> {
         return try {
             val raw = limiter.run(EndpointRateLimiter.EP_CLOSEST_STOPS) {
@@ -964,6 +996,34 @@ private fun parseScheduleWallClock(token: String): LocalTime? {
     val m = parts[1].toIntOrNull() ?: return null
     if (h !in 0..23 || m !in 0..59) return null
     return LocalTime.of(h, m)
+}
+
+private fun scheduleRangeEndLocal(range: String): LocalTime? {
+    val s = range.trim()
+    if (s.isEmpty()) return null
+    val endToken = s.split(Regex("""[-–]""")).lastOrNull()?.trim().orEmpty()
+    return parseScheduleWallClock(endToken)
+}
+
+private fun lastServiceEndTime(timetable: RouteDailyTimetable): LocalTime? {
+    val endTimes = timetable.originDepartures.flatMap { row ->
+        val out = ArrayList<LocalTime>(2)
+        scheduleRangeEndLocal(row.primaryRange)?.let { out.add(it) }
+        row.secondaryRange?.let { scheduleRangeEndLocal(it) }?.let { out.add(it) }
+        out
+    }
+    return endTimes.maxOrNull()
+}
+
+private const val LAST_BUS_WARNING_THRESHOLD_MINUTES = 60
+
+private fun isLastBusApproaching(timetable: RouteDailyTimetable, now: ZonedDateTime): Boolean {
+    val lastEnd = lastServiceEndTime(timetable) ?: return false
+    val zone = now.zone
+    val today = now.toLocalDate()
+    val target = ZonedDateTime.of(today, lastEnd, zone)
+    val minutesUntilEnd = ChronoUnit.MINUTES.between(now, target).toInt()
+    return minutesUntilEnd in -120..LAST_BUS_WARNING_THRESHOLD_MINUTES
 }
 
 private fun OasaStopXYJson.descrValue(): String =

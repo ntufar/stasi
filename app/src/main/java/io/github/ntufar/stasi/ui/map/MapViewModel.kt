@@ -47,6 +47,7 @@ data class MapUiState(
     val timetable: RouteDailyTimetable? = null,
     val timetableLoading: Boolean = false,
     val timetableError: String? = null,
+    val timetableLastBusWarning: Boolean = false,
     /**
      * Closest stops around the user on the manual route map when no line is loaded yet
      * ([getClosestStops]); cleared when a route is shown.
@@ -208,10 +209,12 @@ class MapViewModel(
                 }
                 lastTimetableLineCode = line
                 val empty = t.originDepartures.isEmpty() && t.terminusDepartures.isEmpty()
+                val lastBusWarn = if (!empty) repository.checkLastBusWarning(t) else false
                 _uiState.update {
                     it.copy(
                         timetable = t,
                         timetableLoading = false,
+                        timetableLastBusWarning = lastBusWarn,
                         timetableError = if (empty) {
                             str(R.string.map_error_timetable_empty)
                         } else {

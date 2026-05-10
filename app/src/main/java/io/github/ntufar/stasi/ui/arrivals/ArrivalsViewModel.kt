@@ -66,7 +66,8 @@ class ArrivalsViewModel(
             val title = repository.getStopLabel(stopCode)
             val raw = repository.getStopArrivals(stopCode).sortedBy { it.minutes }
             val withSchedule = repository.enrichArrivalsWithOriginSchedule(stopCode, raw)
-            val arrivals = repository.enrichArrivalsWithOriginBoardings(stopCode, withSchedule)
+            val withBoardings = repository.enrichArrivalsWithOriginBoardings(stopCode, withSchedule)
+            val arrivals = repository.enrichArrivalsWithLastBusWarning(withBoardings)
             val fav = favoritesRepository.isFavorite(stopCode)
             _uiState.update {
                 it.copy(

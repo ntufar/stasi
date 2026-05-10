@@ -33,6 +33,8 @@
     <string name="stops_heading">Στάσεις</string>
     <string name="toast_route_load_failed">Δεν ήταν δυνατή η φόρτωση της διαδρομής. Ελέγξτε το δίκτυο.</string>
 
+    <string name="arrivals_last_service_warning">Τελευταίο</string>
+    <string name="timetable_last_service_warning">Τελευταίο δρομολόγιο σύντομα</string>
     <string name="arrivals_from_origin_minutes">Από αφετηρία%1$s: %2$s</string>
     <string name="arrivals_schedule_from_origin">Δρομολόγιο από αφετηρία%1$s</string>
     <string name="arrivals_traffic_approx_less_than">σε &lt;1΄</string>

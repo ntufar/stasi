@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.14 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.15 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -29,6 +29,10 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 7. **Arrivals at a stop (not the route origin):** when the viewed stop is **not** the **first stop** of that route (in OASA route order), the app shows **when the next service from the route’s origin** is planned. **Schedule-based** hints (`getDailySchedule`, `come` / αφετηρία, Europe/Athens, next window start) appear as their **own list row** (clock + line + “Δρομολόγιο από αφετηρία”), **not** nested under a live vehicle row, so users do not confuse them with the bus counted down in minutes above. **Fallback** when schedule data is missing: a single secondary line on the live row from live `getStopArrivals` at the origin stop. Omit when the user is already at the origin stop.
 8. Offline cache: lines and stops cached 24h, arrivals cached 30s
 9. **Navigation drawer** (menu icon on main screens): jump to **Home**, **Search**, or **Route map** (manual entry); language **English / Greek**. **Edge-swipe to open the drawer is disabled on Route map** (manual or preset line) so horizontal map pans are not mistaken for opening the drawer; use the **menu** icon there. Other screens keep edge-swipe where the platform drawer allows it.
+10. **Last Bus Warning:** when the last scheduled service window for a line (from `getDailySchedule` origin departures) is ending within **30 minutes**, the app warns the user:
+    - **Arrivals screen:** an amber chip ("Last service" / "Τελευταίο") appears next to the line label for affected routes.
+    - **Timetable tab (MapScreen):** an amber banner appears below the title, and the last origin departure row is highlighted with an amber background.
+    - The warning activates when `now` is within 30 min of the last time-window end in origin departures, or up to 2 hours past it (service ended). Computed per line using `Europe/Athens` timezone.
 
 ## 4. Out of Scope for MVP
 - Ticket purchase

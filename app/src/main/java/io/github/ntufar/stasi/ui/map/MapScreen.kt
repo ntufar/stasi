@@ -12,6 +12,7 @@ import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -40,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -61,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.ntufar.stasi.R
 import androidx.compose.ui.viewinterop.AndroidView
@@ -401,6 +404,7 @@ fun MapScreen(
                         loading = uiState.timetableLoading,
                         error = uiState.timetableError,
                         timetable = uiState.timetable,
+                        lastBusWarning = uiState.timetableLastBusWarning,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -427,6 +431,7 @@ private fun RouteTimetablePanel(
     loading: Boolean,
     error: String?,
     timetable: RouteDailyTimetable?,
+    lastBusWarning: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -466,6 +471,25 @@ private fun RouteTimetablePanel(
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    if (lastBusWarning) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = androidx.compose.ui.graphics.Color(0xFFFFA726).copy(alpha = 0.15f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.timetable_last_service_warning),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = androidx.compose.ui.graphics.Color(0xFFFFA726),
+                                    modifier = Modifier.padding(12.dp),
+                                )
+                            }
+                        }
                     }
                     item {
                         Row(
@@ -515,6 +539,7 @@ private fun RouteTimetablePanel(
                                 "pair-$ix-$o-$t"
                             },
                         ) { ix ->
+                            val isLastOriginRow = lastBusWarning && ix == origins.size - 1
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -522,7 +547,7 @@ private fun RouteTimetablePanel(
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 Box(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                    TimetableRowCell(origins.getOrNull(ix))
+                                    TimetableRowCell(origins.getOrNull(ix), isHighlighted = isLastOriginRow)
                                 }
                                 VerticalDivider(
                                     modifier = Modifier
@@ -557,11 +582,17 @@ private fun RouteTimetablePanel(
 }
 
 @Composable
-private fun TimetableRowCell(row: RouteDailyTimetableRow?) {
+private fun TimetableRowCell(row: RouteDailyTimetableRow?, isHighlighted: Boolean = false) {
+    val bgColor = if (isHighlighted) {
+        androidx.compose.ui.graphics.Color(0xFFFFA726).copy(alpha = 0.15f)
+    } else {
+        androidx.compose.ui.graphics.Color.Transparent
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .background(bgColor, shape = RoundedCornerShape(4.dp))
+            .padding(vertical = 6.dp, horizontal = if (isHighlighted) 6.dp else 0.dp),
     ) {
         if (row == null) {
             Text(
@@ -574,6 +605,7 @@ private fun TimetableRowCell(row: RouteDailyTimetableRow?) {
                 text = row.primaryRange,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
             )
             row.secondaryRange?.let { sec ->
                 Text(
