@@ -14,6 +14,9 @@
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
     <string name="nav_map">Route map</string>
+    <string name="settings_heading">Settings</string>
+    <string name="settings_arrival_alert_threshold_label">Start arrival notification when bus is within</string>
+
     <string name="language_heading">Language</string>
     <string name="language_english">English</string>
     <string name="language_greek">Greek</string>
@@ -68,6 +71,9 @@
     <string name="notification_channel_name">Arrival Alerts</string>
     <string name="notification_channel_description">Notifications when your bus is arriving soon</string>
     <string name="notification_arrival_title">%1$s arriving soon</string>
+    <string name="notification_arrival_title_arrived">%1$s — arrived</string>
+    <string name="notification_arrival_title_departed">%1$s — has left</string>
     <string name="notification_arrival_text">Arriving in %1$d min at %2$s</string>
-    <string name="notification_arrival_now">Arriving now at %1$s</string>
+    <string name="notification_arrival_arrived">The bus has arrived at %1$s</string>
+    <string name="notification_arrival_left">The bus has left. This alert was for %1$s</string>
 </resources>

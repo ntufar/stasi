@@ -27,12 +27,24 @@ class NotificationHelper(private val context: Context) {
         nm.createNotificationChannel(channel)
     }
 
-    fun showArrivalNotification(
+    enum class ArrivalPhase {
+        Countdown,
+        Arrived,
+        Departed,
+    }
+
+    /**
+     * Shows or updates the same notification id so the arrival alert evolves (countdown → arrived → left).
+     * [setOnlyAlertOnce] avoids sound/vibration on every poll update after the first post.
+     */
+    fun showOrUpdateArrivalNotification(
         stopCode: String,
         routeCode: String,
+        vehCode: String,
         lineLabel: String,
         stopTitle: String,
-        minutes: Int,
+        phase: ArrivalPhase,
+        minutes: Int = 0,
     ) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -45,11 +57,18 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = context.getString(R.string.notification_arrival_title, lineLabel)
-        val text = if (minutes <= 0) {
-            context.getString(R.string.notification_arrival_now, stopTitle)
-        } else {
-            context.getString(R.string.notification_arrival_text, minutes, stopTitle)
+        val title = when (phase) {
+            ArrivalPhase.Countdown -> context.getString(R.string.notification_arrival_title, lineLabel)
+            ArrivalPhase.Arrived -> context.getString(R.string.notification_arrival_title_arrived, lineLabel)
+            ArrivalPhase.Departed -> context.getString(R.string.notification_arrival_title_departed, lineLabel)
+        }
+        val text = when (phase) {
+            ArrivalPhase.Countdown -> when {
+                minutes <= 0 -> context.getString(R.string.notification_arrival_arrived, stopTitle)
+                else -> context.getString(R.string.notification_arrival_text, minutes, stopTitle)
+            }
+            ArrivalPhase.Arrived -> context.getString(R.string.notification_arrival_arrived, stopTitle)
+            ArrivalPhase.Departed -> context.getString(R.string.notification_arrival_left, stopTitle)
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -58,12 +77,13 @@ class NotificationHelper(private val context: Context) {
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val id = NOTIFICATION_ID_BASE + (stopCode + routeCode).hashCode()
+        val id = NOTIFICATION_ID_BASE + (stopCode + routeCode + vehCode).hashCode()
         nm.notify(id, notification)
     }
 }

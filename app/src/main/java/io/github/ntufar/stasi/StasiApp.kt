@@ -1,20 +1,27 @@
 package io.github.ntufar.stasi
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -42,6 +49,9 @@ fun StasiApp() {
     val container = LocalAppContainer.current
     val localeTag by container.settingsRepository.localeTag.collectAsStateWithLifecycle(
         initialValue = SettingsRepository.LANGUAGE_EL,
+    )
+    val alertThresholdMinutes by container.settingsRepository.arrivalAlertThresholdMinutes.collectAsStateWithLifecycle(
+        initialValue = SettingsRepository.DEFAULT_ARRIVAL_ALERT_THRESHOLD_MINUTES,
     )
 
     val openDrawer: () -> Unit = remember(scope, drawerState) {
@@ -119,6 +129,48 @@ fun StasiApp() {
                         Unit
                     },
                 )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    stringResource(R.string.settings_heading),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                )
+                var thresholdMenuExpanded by remember { mutableStateOf(false) }
+                Text(
+                    stringResource(R.string.settings_arrival_alert_threshold_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    TextButton(
+                        onClick = { thresholdMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.minutes_short, alertThresholdMinutes))
+                    }
+                    DropdownMenu(
+                        expanded = thresholdMenuExpanded,
+                        onDismissRequest = { thresholdMenuExpanded = false },
+                    ) {
+                        SettingsRepository.arrivalAlertThresholdChoices.forEach { minutesOption ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.minutes_short, minutesOption)) },
+                                onClick = {
+                                    scope.launch {
+                                        container.settingsRepository.setArrivalAlertThresholdMinutes(minutesOption)
+                                        thresholdMenuExpanded = false
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
                     stringResource(R.string.language_heading),

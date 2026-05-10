@@ -6,8 +6,10 @@ import androidx.work.WorkerParameters
 import io.github.ntufar.stasi.data.local.AppDatabase
 import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
+import io.github.ntufar.stasi.data.repository.SettingsRepository
 import io.github.ntufar.stasi.util.NotificationHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 class ArrivalAlertWorker(
     context: Context,
@@ -21,7 +23,6 @@ class ArrivalAlertWorker(
         const val KEY_LINE_LABEL = "line_label"
         const val KEY_STOP_TITLE = "stop_title"
 
-        const val ALERT_THRESHOLD_MINUTES = 5
         private const val POLL_INTERVAL_MS = 45_000L
         private const val MAX_RUNTIME_MS = 30L * 60_000L
 
@@ -40,8 +41,10 @@ class ArrivalAlertWorker(
         val oasaRepository = OasaRepository(dao = dao)
         val alertsRepository = AlertsRepository(applicationContext)
         val notificationHelper = NotificationHelper(applicationContext)
+        val settingsRepository = SettingsRepository(applicationContext)
 
         val startTime = System.currentTimeMillis()
+        var tracking = false
 
         while (System.currentTimeMillis() - startTime < MAX_RUNTIME_MS) {
             if (!alertsRepository.isAlertActive(stopCode, routeCode, vehCode)) {
@@ -49,20 +52,57 @@ class ArrivalAlertWorker(
             }
 
             try {
+                val threshold = settingsRepository.arrivalAlertThresholdMinutes.first()
                 val arrivals = oasaRepository.getStopArrivals(stopCode)
                 val hit = arrivals.firstOrNull {
-                    it.routeCode == routeCode && it.minutes <= ALERT_THRESHOLD_MINUTES
+                    it.routeCode == routeCode && it.vehCode == vehCode
                 }
-                if (hit != null) {
-                    notificationHelper.showArrivalNotification(
+
+                if (!tracking) {
+                    if (hit != null && hit.minutes <= threshold) {
+                        tracking = true
+                        val initialPhase = if (hit.minutes <= 0) {
+                            NotificationHelper.ArrivalPhase.Arrived
+                        } else {
+                            NotificationHelper.ArrivalPhase.Countdown
+                        }
+                        notificationHelper.showOrUpdateArrivalNotification(
+                            stopCode = stopCode,
+                            routeCode = routeCode,
+                            vehCode = vehCode,
+                            lineLabel = lineLabel,
+                            stopTitle = stopTitle,
+                            phase = initialPhase,
+                            minutes = hit.minutes,
+                        )
+                    }
+                } else {
+                    if (hit == null) {
+                        notificationHelper.showOrUpdateArrivalNotification(
+                            stopCode = stopCode,
+                            routeCode = routeCode,
+                            vehCode = vehCode,
+                            lineLabel = lineLabel,
+                            stopTitle = stopTitle,
+                            phase = NotificationHelper.ArrivalPhase.Departed,
+                        )
+                        alertsRepository.removeAlert(stopCode, routeCode, vehCode)
+                        return Result.success()
+                    }
+                    val phase = if (hit.minutes <= 0) {
+                        NotificationHelper.ArrivalPhase.Arrived
+                    } else {
+                        NotificationHelper.ArrivalPhase.Countdown
+                    }
+                    notificationHelper.showOrUpdateArrivalNotification(
                         stopCode = stopCode,
                         routeCode = routeCode,
+                        vehCode = vehCode,
                         lineLabel = lineLabel,
                         stopTitle = stopTitle,
+                        phase = phase,
                         minutes = hit.minutes,
                     )
-                    alertsRepository.removeAlert(stopCode, routeCode, vehCode)
-                    return Result.success()
                 }
             } catch (_: Exception) {
                 // Network failure — keep retrying on next poll

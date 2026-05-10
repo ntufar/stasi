@@ -14,6 +14,9 @@
     <string name="nav_home">Αρχική</string>
     <string name="nav_search">Αναζήτηση</string>
     <string name="nav_map">Χάρτης διαδρομής</string>
+    <string name="settings_heading">Ρυθμίσεις</string>
+    <string name="settings_arrival_alert_threshold_label">Έναρξη ειδοποίησης άφιξης όταν το λεωφορείο είναι εντός</string>
+
     <string name="language_heading">Γλώσσα</string>
     <string name="language_english">Αγγλικά</string>
     <string name="language_greek">Ελληνικά</string>
@@ -68,6 +71,9 @@
     <string name="notification_channel_name">Ειδοποιήσεις Άφιξης</string>
     <string name="notification_channel_description">Ειδοποιήσεις όταν το λεωφορείο σας φτάνει</string>
     <string name="notification_arrival_title">%1$s φτάνει σύντομα</string>
+    <string name="notification_arrival_title_arrived">%1$s — έφτασε</string>
+    <string name="notification_arrival_title_departed">%1$s — αναχώρησε</string>
     <string name="notification_arrival_text">Φτάνει σε %1$d΄ στο %2$s</string>
-    <string name="notification_arrival_now">Φτάνει τώρα στο %1$s</string>
+    <string name="notification_arrival_arrived">Το λεωφορείο έφτασε στο %1$s</string>
+    <string name="notification_arrival_left">Το λεωφορείο αναχώρησε. Η ειδοποίηση αφορούσε %1$s</string>
 </resources>
