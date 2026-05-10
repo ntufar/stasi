@@ -5,6 +5,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
 import io.github.ntufar.stasi.MainActivity
 import io.github.ntufar.stasi.R
@@ -14,6 +19,8 @@ class NotificationHelper(private val context: Context) {
     companion object {
         const val CHANNEL_ID = "arrival_alerts"
         private const val NOTIFICATION_ID_BASE = 1000
+        private const val ROUTE_RELATIVE_SIZE = 1.16f
+        private const val MINUTES_RELATIVE_SIZE = 1.22f
     }
 
     fun createChannel() {
@@ -57,12 +64,14 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = when (phase) {
+        val titlePlain = when (phase) {
             ArrivalPhase.Countdown -> context.getString(R.string.notification_arrival_title, lineLabel)
             ArrivalPhase.Arrived -> context.getString(R.string.notification_arrival_title_arrived, lineLabel)
             ArrivalPhase.Departed -> context.getString(R.string.notification_arrival_title_departed, lineLabel)
         }
-        val text = when (phase) {
+        val title = styleRouteInTitle(titlePlain, lineLabel)
+
+        val textPlain = when (phase) {
             ArrivalPhase.Countdown -> when {
                 minutes <= 0 -> context.getString(R.string.notification_arrival_arrived, stopTitle)
                 else -> context.getString(R.string.notification_arrival_text, minutes, stopTitle)
@@ -70,11 +79,23 @@ class NotificationHelper(private val context: Context) {
             ArrivalPhase.Arrived -> context.getString(R.string.notification_arrival_arrived, stopTitle)
             ArrivalPhase.Departed -> context.getString(R.string.notification_arrival_left, stopTitle)
         }
+        val text = when (phase) {
+            ArrivalPhase.Countdown -> when {
+                minutes <= 0 -> textPlain
+                else -> styleMinutesInCountdown(textPlain, minutes)
+            }
+            else -> textPlain
+        }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
+            .apply {
+                if (phase == ArrivalPhase.Countdown && minutes > 0 && text is Spanned) {
+                    setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                }
+            }
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setOnlyAlertOnce(true)
@@ -85,5 +106,62 @@ class NotificationHelper(private val context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val id = NOTIFICATION_ID_BASE + (stopCode + routeCode + vehCode).hashCode()
         nm.notify(id, notification)
+    }
+
+    /** Public line number: segment before " · ", else leading digits (+ optional letter suffix). */
+    private fun routeNumberSegment(lineLabel: String): String {
+        val t = lineLabel.trim()
+        val sep = " · "
+        val dot = t.indexOf(sep)
+        if (dot > 0) return t.substring(0, dot).trim()
+        val m = Regex("""^(\d+[A-Za-zΑ-Ωα-ω]?)""").find(t)
+        if (m != null) return m.value.trim()
+        val digits = t.takeWhile { it.isDigit() }
+        if (digits.isNotEmpty()) return digits
+        return t.substringBefore(' ').trim()
+    }
+
+    private fun styleRouteInTitle(fullTitle: String, lineLabel: String): CharSequence {
+        val routeSeg = routeNumberSegment(lineLabel)
+        if (routeSeg.isEmpty()) return fullTitle
+        val routeStart = when {
+            fullTitle.startsWith(lineLabel) -> lineLabel.indexOf(routeSeg).coerceAtLeast(0)
+            else -> fullTitle.indexOf(routeSeg)
+        }
+        if (routeStart < 0 || routeStart + routeSeg.length > fullTitle.length) return fullTitle
+        val ss = SpannableString(fullTitle)
+        applyEmphasisSpans(ss, routeStart, routeStart + routeSeg.length, ROUTE_RELATIVE_SIZE)
+        return ss
+    }
+
+    private fun minutesHighlightRange(plain: String, minutes: Int): IntRange? {
+        val n = minutes.toString()
+        val withWord = n + " min"
+        val i = plain.indexOf(withWord)
+        if (i >= 0) return i until i + withWord.length
+        val idx = plain.indexOf(n)
+        if (idx < 0) return null
+        val after = idx + n.length
+        if (after < plain.length) {
+            val ch = plain[after]
+            if (ch == '\'' || ch == '′' || ch == '΄' || ch == '\u0374' || ch == '\u02B9') {
+                return idx until after + 1
+            }
+        }
+        return idx until after
+    }
+
+    private fun styleMinutesInCountdown(plain: String, minutes: Int): CharSequence {
+        if (minutes < 0) return plain
+        val range = minutesHighlightRange(plain, minutes) ?: return plain
+        val ss = SpannableString(plain)
+        applyEmphasisSpans(ss, range.first, range.last + 1, MINUTES_RELATIVE_SIZE)
+        return ss
+    }
+
+    private fun applyEmphasisSpans(ss: SpannableString, start: Int, end: Int, relativeSize: Float) {
+        if (start < 0 || end <= start || end > ss.length) return
+        ss.setSpan(StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ss.setSpan(RelativeSizeSpan(relativeSize), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
 }

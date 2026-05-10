@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.19 | Date: 2026-05-10 | Author: Nicolai Tufar
+Version: 0.20 | Date: 2026-05-10 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -39,7 +39,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
     - **Fire condition:** the worker polls for the live row whose **`routeCode`** and **`vehCode`** match the alert. When **`minutes` ≤** the user’s **arrival alert threshold** (see Settings), it starts a **single notification** (same id) that **updates on each poll** (about every **45 s**): countdown copy uses live minutes (e.g. “Arriving in *n* min at …”), then **“The bus has arrived at …”** while the vehicle still appears with **≤ 0** minutes, then **“The bus has left …”** when that vehicle **no longer appears** in `getStopArrivals` for the stop. **Sound/vibration** applies to the **first** post only (`setOnlyAlertOnce`). After **departed**, the alert is removed from DataStore and the worker ends. The threshold is read from **Settings** on each poll so changes apply to in-flight workers.
     - **Expiry:** if threshold is never reached, the worker removes the alert after **30 minutes** of polling and exits successfully.
     - **Android 13+:** **`POST_NOTIFICATIONS`** is declared in the manifest; on first tap to **enable** an alert, if permission is missing the system permission sheet runs, and the alert is only scheduled after grant (pending args held in composable state).
-    - **Channel:** `arrival_alerts` is created at **`Application.onCreate`** (`NotificationHelper.createChannel`). Copy uses `notification_channel_*` and `notification_arrival_*` / title variants for arrived vs departed (EN + EL).
+    - **Channel:** `arrival_alerts` is created at **`Application.onCreate`** (`NotificationHelper.createChannel`). Copy uses `notification_channel_*` and `notification_arrival_*` / title variants for arrived vs departed (EN + EL). **Countdown** notifications use `Spannable` so the **public route number** (e.g. before ` · ` in the line label) and the **minutes segment** (e.g. `14 min` / Greek `΄` suffix) are **bold and slightly larger**; **BigTextStyle** repeats the styled body when the notification is expanded.
     - **Content intent:** `MainActivity` with `navigate_to_stop` extra = stop code (for opening the right stop; **navigation must consume this extra** in the Compose layer to land on Arrivals—intent is prepared for deep link).
     - **Persistence:** active alert keys live in a separate **Preferences DataStore** (`arrival_alerts`, string set); `ArrivalsViewModel` collects `activeAlerts` filtered by current `stopCode` to drive icon state. Cancelling work clears via `cancelUniqueWork` + repository remove.
     - **Foreground list:** while Arrivals is visible, the screen also **refreshes arrivals every 30 seconds** and **on each `RESUMED`** lifecycle (`refreshNow`), independent of the worker.
