@@ -7,7 +7,7 @@ import io.github.ntufar.stasi.data.local.AppDatabase
 import io.github.ntufar.stasi.data.repository.AlertsRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
 import io.github.ntufar.stasi.data.repository.SettingsRepository
-import io.github.ntufar.stasi.data.repository.QuietHoursSettings
+import io.github.ntufar.stasi.data.util.isQuietHoursActive
 import io.github.ntufar.stasi.util.NotificationHelper
 import java.time.LocalTime
 import kotlinx.coroutines.delay
@@ -123,18 +123,5 @@ class ArrivalAlertWorker(
 
         alertsRepository.removeAlert(stopCode, routeCode, vehCode)
         return Result.success()
-    }
-
-    private fun isQuietHoursActive(settings: QuietHoursSettings, now: LocalTime): Boolean {
-        if (!settings.enabled) return false
-        val start = settings.startMinutes
-        val end = settings.endMinutes
-        if (start == end) return false
-        val nowMinutes = now.hour * 60 + now.minute
-        return if (start < end) {
-            nowMinutes in start until end
-        } else {
-            nowMinutes >= start || nowMinutes < end
-        }
     }
 }

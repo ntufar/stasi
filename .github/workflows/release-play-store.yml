@@ -73,6 +73,9 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest --stacktrace --warning-mode all
+
       - name: Decode release keystore and write keystore.properties
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}

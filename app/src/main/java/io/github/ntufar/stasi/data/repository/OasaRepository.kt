@@ -21,7 +21,9 @@ import io.github.ntufar.stasi.data.util.expandLatinLettersQueryForGreekSearch
 import io.github.ntufar.stasi.data.util.normalizeGreek
 import io.github.ntufar.stasi.data.util.stopSearchNorm
 import io.github.ntufar.stasi.data.util.ARRIVAL_MINUTES_UNKNOWN
+import io.github.ntufar.stasi.data.util.isLastBusApproaching
 import io.github.ntufar.stasi.data.util.parseArrivalMinutes
+import io.github.ntufar.stasi.data.util.scheduleRangeStartLocal
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -103,7 +105,7 @@ data class ArrivalDetail(
     val originStopDescription: String? = null,
     /** Next scheduled origin departure wall clock (Europe/Athens) from `come` windows when known. */
     val originScheduleClock: String? = null,
-    /** True when the line's last scheduled service window is ending within [LAST_BUS_WARNING_THRESHOLD_MINUTES]. */
+    /** True when the line's last scheduled service window is ending within the last-bus warning window (see [io.github.ntufar.stasi.data.util.isLastBusApproaching]). */
     val isLastBusWarning: Boolean = false,
 )
 
@@ -995,50 +997,6 @@ private fun scheduleWindowStartTimes(row: RouteDailyTimetableRow): List<LocalTim
     scheduleRangeStartLocal(row.primaryRange)?.let { out.add(it) }
     row.secondaryRange?.let { scheduleRangeStartLocal(it) }?.let { out.add(it) }
     return out
-}
-
-private fun scheduleRangeStartLocal(range: String): LocalTime? {
-    val s = range.trim()
-    if (s.isEmpty()) return null
-    val startToken = s.split(Regex("""[-–]""")).firstOrNull()?.trim().orEmpty()
-    return parseScheduleWallClock(startToken)
-}
-
-private fun parseScheduleWallClock(token: String): LocalTime? {
-    val parts = token.split(':')
-    if (parts.size < 2) return null
-    val h = parts[0].toIntOrNull() ?: return null
-    val m = parts[1].toIntOrNull() ?: return null
-    if (h !in 0..23 || m !in 0..59) return null
-    return LocalTime.of(h, m)
-}
-
-private fun scheduleRangeEndLocal(range: String): LocalTime? {
-    val s = range.trim()
-    if (s.isEmpty()) return null
-    val endToken = s.split(Regex("""[-–]""")).lastOrNull()?.trim().orEmpty()
-    return parseScheduleWallClock(endToken)
-}
-
-private fun lastServiceEndTime(timetable: RouteDailyTimetable): LocalTime? {
-    val endTimes = timetable.originDepartures.flatMap { row ->
-        val out = ArrayList<LocalTime>(2)
-        scheduleRangeEndLocal(row.primaryRange)?.let { out.add(it) }
-        row.secondaryRange?.let { scheduleRangeEndLocal(it) }?.let { out.add(it) }
-        out
-    }
-    return endTimes.maxOrNull()
-}
-
-private const val LAST_BUS_WARNING_THRESHOLD_MINUTES = 60
-
-private fun isLastBusApproaching(timetable: RouteDailyTimetable, now: ZonedDateTime): Boolean {
-    val lastEnd = lastServiceEndTime(timetable) ?: return false
-    val zone = now.zone
-    val today = now.toLocalDate()
-    val target = ZonedDateTime.of(today, lastEnd, zone)
-    val minutesUntilEnd = ChronoUnit.MINUTES.between(now, target).toInt()
-    return minutesUntilEnd in -120..LAST_BUS_WARNING_THRESHOLD_MINUTES
 }
 
 private fun OasaStopXYJson.descrValue(): String =
