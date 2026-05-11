@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.ntufar.stasi.R
@@ -61,11 +62,12 @@ fun SearchScreen(
     val ui by vm.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        modifier = Modifier.testTag("screen_search"),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.search_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, modifier = Modifier.testTag("btn_back")) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back),

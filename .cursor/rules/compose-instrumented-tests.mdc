@@ -1,0 +1,50 @@
+---
+description: Conventions for Compose instrumented (androidTest) smoke tests
+globs: app/src/androidTest/**/*.kt
+alwaysApply: false
+---
+
+# Compose Instrumented Tests — Test Tags, Not Text
+
+This app switches locale via `AppCompatDelegate.setApplicationLocales()` in `MainActivity.onCreate`.
+On API < 33, this **recreates the Activity**. On a fresh CI emulator (English system locale, Greek app default), the compose test rule's `activity` reference goes stale, so `activity.getString(R.string.*)` returns the wrong locale and text/content-description matchers silently mismatch.
+
+## Rules
+
+1. **Never match by text or `contentDescription`** in instrumented tests. Use `Modifier.testTag(...)` and `onNodeWithTag(...)` instead — tags are locale-independent and survive activity recreation.
+
+2. **Add a `@Before` that waits for the destination screen tag** to handle the recreation delay:
+   ```kotlin
+   @Before
+   fun waitForAppReady() {
+       composeRule.waitUntil(timeoutMillis = 15_000) {
+           composeRule.onAllNodes(hasTestTag("screen_home"))
+               .fetchSemanticsNodes().isNotEmpty()
+       }
+   }
+   ```
+
+3. **After every navigation action**, `waitUntil` the target screen's tag appears before asserting:
+   ```kotlin
+   composeRule.onNodeWithTag("btn_menu").performClick()
+   composeRule.waitForIdle()
+   composeRule.onNodeWithTag("drawer_search").performClick()
+   composeRule.waitUntil(timeoutMillis = 10_000) {
+       composeRule.onAllNodes(hasTestTag("screen_search"))
+           .fetchSemanticsNodes().isNotEmpty()
+   }
+   ```
+
+4. **When adding a new screen or testable element**, add a `Modifier.testTag("screen_<name>")` to the Scaffold (or root composable) and `Modifier.testTag("btn_<action>")` / `Modifier.testTag("drawer_<dest>")` to interactive elements that tests need to tap.
+
+## Existing tags
+
+| Tag | Element | File |
+|-----|---------|------|
+| `screen_home` | HomeScreen Scaffold | `ui/home/HomeScreen.kt` |
+| `screen_search` | SearchScreen Scaffold | `ui/search/SearchScreen.kt` |
+| `screen_map` | MapScreen Scaffold | `ui/map/MapScreen.kt` |
+| `btn_menu` | Menu (hamburger) IconButton | `ui/home/HomeScreen.kt` |
+| `btn_back` | Back IconButton | `ui/search/SearchScreen.kt` |
+| `drawer_search` | Search drawer item | `StasiApp.kt` |
+| `drawer_map` | Route map drawer item | `StasiApp.kt` |

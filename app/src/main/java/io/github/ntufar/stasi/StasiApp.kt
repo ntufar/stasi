@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -134,6 +135,7 @@ fun StasiApp(initialStopCode: String? = null) {
                         }
                         Unit
                     },
+                    modifier = Modifier.testTag("drawer_search"),
                 )
                 NavigationDrawerItem(
                     label = { Text(stringResource(R.string.nav_map)) },
@@ -152,6 +154,7 @@ fun StasiApp(initialStopCode: String? = null) {
                         }
                         Unit
                     },
+                    modifier = Modifier.testTag("drawer_map"),
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(

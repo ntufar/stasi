@@ -1,11 +1,12 @@
 package io.github.ntufar.stasi
 
-import androidx.annotation.StringRes
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,40 +17,57 @@ class MainActivitySmokeTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
-    private fun str(@StringRes id: Int): String = composeRule.activity.getString(id)
-
-    @Test
-    fun homeTopBarShowsAppName() {
-        composeRule.onNodeWithText(str(R.string.app_name)).assertExists()
+    @Before
+    fun waitForAppReady() {
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            composeRule.onAllNodes(hasTestTag("screen_home"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test
-    fun drawer_navigateToSearch_showsSearchTitle() {
-        composeRule.onNodeWithContentDescription(str(R.string.cd_menu)).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.nav_search)).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.search_title)).assertExists()
+    fun homeScreenIsDisplayed() {
+        composeRule.onNodeWithTag("screen_home").assertIsDisplayed()
     }
 
     @Test
-    fun drawer_navigateToRouteMap_showsManualMapChrome() {
-        composeRule.onNodeWithContentDescription(str(R.string.cd_menu)).performClick()
+    fun drawer_navigateToSearch() {
+        composeRule.onNodeWithTag("btn_menu").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.nav_map)).performClick()
+        composeRule.onNodeWithTag("drawer_search").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasTestTag("screen_search"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("screen_search").assertIsDisplayed()
+    }
+
+    @Test
+    fun drawer_navigateToRouteMap() {
+        composeRule.onNodeWithTag("btn_menu").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.map_title_fallback)).assertExists()
-        composeRule.onNodeWithText(str(R.string.map_show)).assertExists()
+        composeRule.onNodeWithTag("drawer_map").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasTestTag("screen_map"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("screen_map").assertIsDisplayed()
     }
 
     @Test
     fun search_back_returnsToHome() {
-        composeRule.onNodeWithContentDescription(str(R.string.cd_menu)).performClick()
+        composeRule.onNodeWithTag("btn_menu").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.nav_search)).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithContentDescription(str(R.string.cd_back)).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText(str(R.string.app_name)).assertExists()
+        composeRule.onNodeWithTag("drawer_search").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasTestTag("screen_search"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("btn_back").performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasTestTag("screen_home"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("screen_home").assertIsDisplayed()
     }
 }

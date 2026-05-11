@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import io.github.ntufar.stasi.R
 import androidx.compose.ui.text.font.FontWeight
@@ -117,11 +118,12 @@ fun HomeScreen(
     }
 
     Scaffold(
+        modifier = Modifier.testTag("screen_home"),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = onOpenMenu) {
+                    IconButton(onClick = onOpenMenu, modifier = Modifier.testTag("btn_menu")) {
                         Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }
                     IconButton(onClick = vm::refreshNow) {
