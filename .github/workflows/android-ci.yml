@@ -119,6 +119,7 @@ jobs:
           retention-days: 7
 
   # Runs after lint + unit tests succeed (saves emulator minutes on obvious failures).
+  # Uses API 31 aosp_atd (Android Test Device) — lighter image, faster boot than google_apis 34.
   instrumented-tests:
     name: Instrumented tests
     needs: lint-test-build
@@ -142,15 +143,25 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
       - name: Run instrumented tests (emulator)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 31
           arch: x86_64
-          target: google_apis
+          target: aosp_atd
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-boot-timeout: 600
+          disable-animations: true
+          force-avd-creation: false
           script: ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace --warning-mode all
 
       - name: Upload instrumented test reports
