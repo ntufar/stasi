@@ -390,15 +390,22 @@ fun StasiApp(initialStopCode: String? = null) {
                 )
             }
             composable(
-                route = "arrivals/{stopCode}",
+                route = "arrivals/{stopCode}?routeCode={routeCode}",
                 arguments = listOf(
                     navArgument("stopCode") { type = NavType.StringType },
+                    navArgument("routeCode") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
                 ),
             ) { entry ->
                 val stopCode = entry.arguments?.getString("stopCode").orEmpty()
+                val routeCodeHint = entry.arguments?.getString("routeCode")
+                    ?.takeIf { it.isNotBlank() }
                 ArrivalsScreen(
                     onOpenMenu = openDrawer,
                     stopCode = stopCode,
+                    routeCodeHint = routeCodeHint,
                     onBack = { navController.popBackStack() },
                     onOpenMap = { routeCode ->
                         scope.launch { container.recentActivityRepository.recordRouteVisit(routeCode) }
@@ -413,9 +420,14 @@ fun StasiApp(initialStopCode: String? = null) {
                     presetRouteCode = null,
                     onOpenMenu = openDrawer,
                     onBack = { navController.popBackStack() },
-                    onStopSelected = { stopCode ->
+                    onStopSelected = { stopCode, mapRouteCode ->
                         scope.launch { container.recentActivityRepository.recordStopVisit(stopCode) }
-                        navController.navigate("arrivals/$stopCode") {
+                        val dest = if (mapRouteCode != null) {
+                            "arrivals/$stopCode?routeCode=$mapRouteCode"
+                        } else {
+                            "arrivals/$stopCode"
+                        }
+                        navController.navigate(dest) {
                             launchSingleTop = true
                         }
                     },
@@ -432,9 +444,14 @@ fun StasiApp(initialStopCode: String? = null) {
                     presetRouteCode = routeCode.ifBlank { null },
                     onOpenMenu = openDrawer,
                     onBack = { navController.popBackStack() },
-                    onStopSelected = { stopCode ->
+                    onStopSelected = { stopCode, mapRouteCode ->
                         scope.launch { container.recentActivityRepository.recordStopVisit(stopCode) }
-                        navController.navigate("arrivals/$stopCode") {
+                        val dest = if (mapRouteCode != null) {
+                            "arrivals/$stopCode?routeCode=$mapRouteCode"
+                        } else {
+                            "arrivals/$stopCode"
+                        }
+                        navController.navigate(dest) {
                             launchSingleTop = true
                         }
                     },

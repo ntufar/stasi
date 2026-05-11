@@ -155,7 +155,7 @@ fun MapScreen(
     presetRouteCode: String?,
     onOpenMenu: () -> Unit,
     onBack: (() -> Unit)?,
-    onStopSelected: (stopCode: String) -> Unit = {},
+    onStopSelected: (stopCode: String, routeCode: String?) -> Unit = { _, _ -> },
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
@@ -370,6 +370,7 @@ fun MapScreen(
                     .weight(1f),
             ) {
                 if (!showRouteTabs || uiState.routeTabIndex == 0) {
+                    val currentAppliedRoute = uiState.appliedRouteCode.takeIf { it.isNotBlank() }
                     StasiMapLibre(
                         stops = mapStops,
                         buses = uiState.buses,
@@ -377,7 +378,7 @@ fun MapScreen(
                         userLatLng = userLatLng,
                         recenterSignal = recenterSignal,
                         onBusVehicleSelected = vm::selectVehicle,
-                        onStopSelected = onStopSelected,
+                        onStopSelected = { stopCode -> onStopSelected(stopCode, currentAppliedRoute) },
                         modifier = Modifier.fillMaxSize(),
                     )
                     if (uiState.routeTabIndex == 0) {

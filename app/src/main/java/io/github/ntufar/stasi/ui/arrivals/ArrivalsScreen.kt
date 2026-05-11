@@ -142,14 +142,15 @@ private fun buildConciseSummaryText(
 fun ArrivalsScreen(
     onOpenMenu: () -> Unit,
     stopCode: String,
+    routeCodeHint: String? = null,
     onBack: () -> Unit,
     onOpenMap: (routeCode: String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val vm: ArrivalsViewModel = viewModel(
-        key = stopCode,
-        factory = remember(stopCode, container) {
+        key = "$stopCode:${routeCodeHint.orEmpty()}",
+        factory = remember(stopCode, routeCodeHint, container) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -160,6 +161,7 @@ fun ArrivalsScreen(
                         container.alertsRepository,
                         container.recentActivityRepository,
                         context.applicationContext,
+                        routeCodeHint = routeCodeHint,
                     ) as T
             }
         },

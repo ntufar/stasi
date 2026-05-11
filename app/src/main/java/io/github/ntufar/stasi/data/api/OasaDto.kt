@@ -12,6 +12,7 @@ data class OasaRouteJson(
     @SerializedName("RouteCode") val routeCode: String?,
     @SerializedName("LineCode") val lineCode: String?,
     @SerializedName("RouteDescr") val routeDescr: String?,
+    @SerializedName("RouteType") val routeType: Int?,
 )
 
 /** Raw JSON from [webGetStops](https://oasa-telematics-api.readthedocs.io/en/latest/webGetStops.html). */

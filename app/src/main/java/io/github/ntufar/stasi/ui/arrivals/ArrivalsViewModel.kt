@@ -41,6 +41,7 @@ class ArrivalsViewModel(
     private val alertsRepository: AlertsRepository,
     private val recentActivityRepository: RecentActivityRepository,
     private val appContext: Context,
+    private val routeCodeHint: String? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArrivalsUiState(stopCode = stopCode))
@@ -51,6 +52,14 @@ class ArrivalsViewModel(
     init {
         viewModelScope.launch {
             recentActivityRepository.recordStopVisit(stopCode)
+        }
+        viewModelScope.launch {
+            runCatching { repository.getStopLabel(stopCode) }
+                .onSuccess { label ->
+                    if (label.isNotBlank()) {
+                        _uiState.update { it.copy(title = label) }
+                    }
+                }
         }
         pollJob = viewModelScope.launch {
             while (isActive) {
@@ -114,9 +123,11 @@ class ArrivalsViewModel(
             val title = repository.getStopLabel(stopCode)
             val snapshot = repository.getStopArrivalsSnapshot(stopCode)
             val raw = snapshot.arrivals.sortedBy { it.minutes }
-            val withSchedule = repository.enrichArrivalsWithOriginSchedule(stopCode, raw)
-            val withBoardings = repository.enrichArrivalsWithOriginBoardings(stopCode, withSchedule)
-            val arrivals = repository.enrichArrivalsWithLastBusWarning(withBoardings)
+            val withOrigin = repository.enrichArrivalsWithOrigin(stopCode, raw)
+            val withWarning = repository.enrichArrivalsWithLastBusWarning(withOrigin)
+            val withScheduleOnly = repository.addScheduleOnlyDepartures(stopCode, withWarning, routeCodeHint)
+            val siblingRoutes = resolveSiblingRoutes()
+            val arrivals = sortByRouteHint(withScheduleOnly, siblingRoutes)
             val fav = favoritesRepository.isFavorite(stopCode)
             _uiState.update {
                 it.copy(
@@ -136,6 +147,32 @@ class ArrivalsViewModel(
                 )
             }
         }
+    }
+
+    private suspend fun resolveSiblingRoutes(): Set<String> {
+        val hint = routeCodeHint ?: return emptySet()
+        return try {
+            val info = repository.getLineRouteInfoForRoute(hint)
+            info?.directions?.map { it.routeCode }?.toSet() ?: emptySet()
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
+
+    private fun sortByRouteHint(
+        arrivals: List<ArrivalDetail>,
+        siblingRoutes: Set<String> = emptySet(),
+    ): List<ArrivalDetail> {
+        val hint = routeCodeHint ?: return arrivals
+        return arrivals.sortedWith(
+            compareBy<ArrivalDetail> {
+                when (it.routeCode) {
+                    hint -> 0
+                    in siblingRoutes -> 1
+                    else -> 2
+                }
+            }.thenBy { it.minutes },
+        )
     }
 
     override fun onCleared() {
@@ -165,8 +202,23 @@ internal fun buildArrivalListRows(arrivals: List<ArrivalDetail>): List<ArrivalLi
     val scheduleEmitted = mutableSetOf<String>()
     val out = ArrayList<ArrivalListRow>(arrivals.size + 2)
     for (a in arrivals) {
-        val scheduleRow = a.originScheduleClock?.takeIf { it.isNotBlank() } != null
-        val live = if (scheduleRow) {
+        val hasSchedule = a.originScheduleClock?.takeIf { it.isNotBlank() } != null
+        if (a.isScheduleOnly && hasSchedule) {
+            if (a.routeCode.isNotBlank() && a.routeCode !in scheduleEmitted) {
+                scheduleEmitted.add(a.routeCode)
+                out.add(
+                    ArrivalListRow.ScheduledOriginDeparture(
+                        routeCode = a.routeCode,
+                        lineLabel = a.lineLabel,
+                        originStopDescription = a.originStopDescription,
+                        clock = a.originScheduleClock!!.trim(),
+                        minutesUntil = a.originDepartureMinutes ?: 999,
+                    ),
+                )
+            }
+            continue
+        }
+        val live = if (hasSchedule) {
             a.copy(
                 originScheduleClock = null,
                 originDepartureMinutes = null,
@@ -176,7 +228,7 @@ internal fun buildArrivalListRows(arrivals: List<ArrivalDetail>): List<ArrivalLi
             a
         }
         out.add(ArrivalListRow.Live(live))
-        if (scheduleRow && a.routeCode.isNotBlank() && a.routeCode !in scheduleEmitted) {
+        if (hasSchedule && a.routeCode.isNotBlank() && a.routeCode !in scheduleEmitted) {
             scheduleEmitted.add(a.routeCode)
             out.add(
                 ArrivalListRow.ScheduledOriginDeparture(
