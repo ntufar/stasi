@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
@@ -148,12 +149,14 @@ class OasaRepository(
     private val lineRouteInfoCache = ConcurrentHashMap<String, CacheEntry<LineRouteInfo>>()
     private val lineRouteInfoLocks = ConcurrentHashMap<String, Mutex>()
     private val arrivalsFetchTime = ConcurrentHashMap<String, Long>()
+    private val originStopCodeCache = ConcurrentHashMap<String, String?>()
+    private val arrivalsFetchJobs = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<ArrivalSnapshot>>()
 
     private companion object CacheTtl {
-        const val TIMETABLE_TTL_MS = 10 * 60 * 1000L
-        const val ROUTES_FOR_STOP_TTL_MS = 10 * 60 * 1000L
-        const val ROUTE_STOPS_TTL_MS = 10 * 60 * 1000L
-        const val BUS_LOCATION_TTL_MS = 30 * 1000L
+        const val TIMETABLE_TTL_MS = 6L * 60 * 60 * 1000L
+        const val ROUTES_FOR_STOP_TTL_MS = 24L * 60 * 60 * 1000L
+        const val ROUTE_STOPS_TTL_MS = 24L * 60 * 60 * 1000L
+        const val BUS_LOCATION_TTL_MS = 15 * 1000L
         const val CLOSEST_STOPS_TTL_MS = 24L * 60 * 60 * 1000L
         const val LINE_ROUTE_INFO_TTL_MS = 24L * 60 * 60 * 1000L
     }
@@ -380,14 +383,20 @@ class OasaRepository(
     suspend fun getRouteOriginStopCode(routeCode: String): String? {
         val rc = routeCode.trim()
         if (rc.isEmpty()) return null
+        originStopCodeCache[rc]?.let { return it }
         val fromDao = try {
             dao.routeStops(rc).minByOrNull { it.routeOrder }?.stopCode?.trim()?.ifBlank { null }
         } catch (_: Exception) {
             null
         }
-        if (fromDao != null) return fromDao
+        if (fromDao != null) {
+            originStopCodeCache[rc] = fromDao
+            return fromDao
+        }
         val fetch = getRouteStops(rc)
-        return fetch.stops.minByOrNull { it.order }?.stopCode?.trim()?.ifBlank { null }
+        val result = fetch.stops.minByOrNull { it.order }?.stopCode?.trim()?.ifBlank { null }
+        originStopCodeCache[rc] = result
+        return result
     }
 
     /**
@@ -617,29 +626,53 @@ class OasaRepository(
         getStopArrivalsSnapshot(stopCode).arrivals
 
     private suspend fun fetchAndCacheArrivalsSnapshot(stopCode: String, now: Long): ArrivalSnapshot {
-        return try {
-            val routesAtStop = try {
-                getRoutesForStop(stopCode).routeMetaByRouteCode()
-            } catch (_: Exception) {
-                emptyMap()
+        arrivalsFetchJobs[stopCode]?.let { existingJob ->
+            return existingJob.await()
+        }
+
+        val job = coroutineScope {
+            async {
+                try {
+                    cleanupOldArrivalsTrackingEntries()
+
+                    val routesAtStop = try {
+                        getRoutesForStop(stopCode).routeMetaByRouteCode()
+                    } catch (_: Exception) {
+                        emptyMap()
+                    }
+                    val json = limiter.run(EndpointRateLimiter.EP_GET_ARRIVALS) {
+                        api.getStopArrivals(stopCode = stopCode)
+                    }
+                    val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now, routesAtStop) }
+                    dao.replaceArrivals(stopCode, rows)
+                    arrivalsFetchTime[stopCode] = now
+                    ArrivalSnapshot(arrivals = rows.map { it.toDetail() }, fetchedAtMillis = now)
+                } catch (_: Exception) {
+                    val stale = try {
+                        dao.arrivalsFresh(stopCode, 0L)
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    ArrivalSnapshot(
+                        arrivals = stale.map { it.toDetail() },
+                        fetchedAtMillis = try { dao.latestArrivalFetch(stopCode) } catch (_: Exception) { null },
+                    )
+                } finally {
+                    arrivalsFetchJobs.remove(stopCode)
+                }
             }
-            val json = limiter.run(EndpointRateLimiter.EP_GET_ARRIVALS) {
-                api.getStopArrivals(stopCode = stopCode)
+        }
+        arrivalsFetchJobs[stopCode] = job
+        return job.await()
+    }
+
+    private fun cleanupOldArrivalsTrackingEntries() {
+        if (arrivalsFetchTime.size > 500) {
+            val now = System.currentTimeMillis()
+            val twoHoursMs = 2L * 60 * 60 * 1000
+            arrivalsFetchTime.entries.removeAll { (_, timestamp) ->
+                now - timestamp > twoHoursMs
             }
-            val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now, routesAtStop) }
-            dao.replaceArrivals(stopCode, rows)
-            arrivalsFetchTime[stopCode] = now
-            ArrivalSnapshot(arrivals = rows.map { it.toDetail() }, fetchedAtMillis = now)
-        } catch (_: Exception) {
-            val stale = try {
-                dao.arrivalsFresh(stopCode, 0L)
-            } catch (_: Exception) {
-                emptyList()
-            }
-            ArrivalSnapshot(
-                arrivals = stale.map { it.toDetail() },
-                fetchedAtMillis = try { dao.latestArrivalFetch(stopCode) } catch (_: Exception) { null },
-            )
         }
     }
 
