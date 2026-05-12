@@ -391,11 +391,13 @@ class MapViewModel(
      * Out-of-cycle refresh of buses + route stops. Triggered by `MapScreen` when the screen
      * returns to RESUMED so the map shows fresh data immediately after the user navigates back
      * to it, instead of waiting up to [LIVE_REFRESH_MS] for the next tick.
+     * Skips refresh if bus location cache is still fresh.
      */
     fun refreshNow() {
         val state = _uiState.value
         val routeCode = state.appliedRouteCode
         if (routeCode.isBlank() || state.stops.isEmpty()) return
+        if (repository.isBusLocationCacheFresh(routeCode)) return
         viewModelScope.launch {
             fetchLiveData(routeCode)
         }

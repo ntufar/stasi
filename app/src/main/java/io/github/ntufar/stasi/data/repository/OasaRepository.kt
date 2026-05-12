@@ -141,12 +141,21 @@ class OasaRepository(
     private val routesForStopCache = ConcurrentHashMap<String, CacheEntry<List<OasaWebRouteForStopJson>>>()
     private val routesForStopLocks = ConcurrentHashMap<String, Mutex>()
     private val routeStopsCache = ConcurrentHashMap<String, CacheEntry<List<RouteStop>>>()
+    private val busLocationCache = ConcurrentHashMap<String, CacheEntry<List<BusOnRoute>>>()
+    private val busLocationLocks = ConcurrentHashMap<String, Mutex>()
+    private val closestStopsCache = ConcurrentHashMap<String, CacheEntry<List<NearbyStop>>>()
+    private val closestStopsLocks = ConcurrentHashMap<String, Mutex>()
+    private val lineRouteInfoCache = ConcurrentHashMap<String, CacheEntry<LineRouteInfo>>()
+    private val lineRouteInfoLocks = ConcurrentHashMap<String, Mutex>()
     private val arrivalsFetchTime = ConcurrentHashMap<String, Long>()
 
     private companion object CacheTtl {
         const val TIMETABLE_TTL_MS = 10 * 60 * 1000L
         const val ROUTES_FOR_STOP_TTL_MS = 10 * 60 * 1000L
         const val ROUTE_STOPS_TTL_MS = 10 * 60 * 1000L
+        const val BUS_LOCATION_TTL_MS = 30 * 1000L
+        const val CLOSEST_STOPS_TTL_MS = 24L * 60 * 60 * 1000L
+        const val LINE_ROUTE_INFO_TTL_MS = 24L * 60 * 60 * 1000L
     }
 
     private suspend fun getRoutesForStop(stopCode: String): List<OasaWebRouteForStopJson> {
@@ -789,6 +798,11 @@ class OasaRepository(
         val rc = routeCode.trim()
         if (rc.isEmpty()) return null
 
+        val now = System.currentTimeMillis()
+        lineRouteInfoCache[rc]?.let { entry ->
+            if (now - entry.timestamp < LINE_ROUTE_INFO_TTL_MS) return entry.data
+        }
+
         var lineCode: String? = try {
             dao.routeByCode(rc)?.lineCode?.trim()?.ifBlank { null }
         } catch (_: Exception) {
@@ -841,7 +855,7 @@ class OasaRepository(
                     )
                 }
                 if (mapped.isNotEmpty()) {
-                    val now = System.currentTimeMillis()
+                    val fetchTime = System.currentTimeMillis()
                     dao.insertRoutes(
                         mapped.map { d ->
                             CachedRouteEntity(
@@ -849,7 +863,7 @@ class OasaRepository(
                                 lineCode = resolvedLineCode,
                                 descr = d.descr,
                                 normDescr = normalizeGreek(d.descr),
-                                fetchedAtMillis = now,
+                                fetchedAtMillis = fetchTime,
                             )
                         },
                     )
@@ -881,23 +895,49 @@ class OasaRepository(
             lineId = lineId,
             lineDescr = lineDescr,
             directions = directions,
-        )
+        ).also { info ->
+            lineRouteInfoCache[rc] = CacheEntry(info, System.currentTimeMillis())
+        }
     }
 
     suspend fun getBusesOnRoute(routeCode: String): List<BusOnRoute> {
-        return try {
-            val raw = limiter.run(EndpointRateLimiter.EP_BUS_LOCATION) {
-                api.getBusLocation(routeCode = routeCode.trim())
-            }
-            raw.mapNotNull { dto ->
-                val no = dto.vehNo?.trim().orEmpty().ifBlank { return@mapNotNull null }
-                val lat = dto.csLat?.toDoubleOrNull() ?: return@mapNotNull null
-                val lng = dto.csLng?.toDoubleOrNull() ?: return@mapNotNull null
-                BusOnRoute(vehicleNo = no, lat = lat, lng = lng)
-            }
-        } catch (_: Exception) {
-            emptyList()
+        val rc = routeCode.trim()
+        if (rc.isEmpty()) return emptyList()
+        val now = System.currentTimeMillis()
+        busLocationCache[rc]?.let { entry ->
+            if (now - entry.timestamp < BUS_LOCATION_TTL_MS) return entry.data
         }
+        val mutex = busLocationLocks.getOrPut(rc) { Mutex() }
+        return mutex.withLock {
+            busLocationCache[rc]?.let { entry ->
+                if (System.currentTimeMillis() - entry.timestamp < BUS_LOCATION_TTL_MS) return@withLock entry.data
+            }
+            try {
+                val raw = limiter.run(EndpointRateLimiter.EP_BUS_LOCATION) {
+                    api.getBusLocation(routeCode = rc)
+                }
+                val result = raw.mapNotNull { dto ->
+                    val no = dto.vehNo?.trim().orEmpty().ifBlank { return@mapNotNull null }
+                    val lat = dto.csLat?.toDoubleOrNull() ?: return@mapNotNull null
+                    val lng = dto.csLng?.toDoubleOrNull() ?: return@mapNotNull null
+                    BusOnRoute(vehicleNo = no, lat = lat, lng = lng)
+                }
+                busLocationCache[rc] = CacheEntry(result, System.currentTimeMillis())
+                result
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    /** Check if bus location cache is fresh without fetching. */
+    fun isBusLocationCacheFresh(routeCode: String): Boolean {
+        val rc = routeCode.trim()
+        if (rc.isEmpty()) return false
+        val now = System.currentTimeMillis()
+        return busLocationCache[rc]?.let { entry ->
+            now - entry.timestamp < BUS_LOCATION_TTL_MS
+        } ?: false
     }
 
     /** Internal OASA line code for [getRouteDailyTimetable], from cache when available. */
@@ -949,15 +989,31 @@ class OasaRepository(
     }
 
     suspend fun getClosestStops(lat: Double, lng: Double): List<NearbyStop> {
-        return try {
-            val raw = limiter.run(EndpointRateLimiter.EP_CLOSEST_STOPS) {
-                api.getClosestStops(lat = lat.toString(), lng = lng.toString())
+        val key = locationKey(lat, lng)
+        val now = System.currentTimeMillis()
+        closestStopsCache[key]?.let { entry ->
+            if (now - entry.timestamp < CLOSEST_STOPS_TTL_MS) return entry.data
+        }
+        val mutex = closestStopsLocks.getOrPut(key) { Mutex() }
+        return mutex.withLock {
+            closestStopsCache[key]?.let { entry ->
+                if (System.currentTimeMillis() - entry.timestamp < CLOSEST_STOPS_TTL_MS) return@withLock entry.data
             }
-            raw.mapNotNull { it.toNearby() }
-        } catch (_: Exception) {
-            emptyList()
+            try {
+                val raw = limiter.run(EndpointRateLimiter.EP_CLOSEST_STOPS) {
+                    api.getClosestStops(lat = lat.toString(), lng = lng.toString())
+                }
+                val result = raw.mapNotNull { it.toNearby() }
+                closestStopsCache[key] = CacheEntry(result, System.currentTimeMillis())
+                result
+            } catch (_: Exception) {
+                emptyList()
+            }
         }
     }
+
+    private fun locationKey(lat: Double, lng: Double): String =
+        "%.4f,%.4f".format(lat, lng)
 
     private fun OasaClosestStopJson.toNearby(): NearbyStop? {
         val code = stopCode?.trim().orEmpty().ifBlank { return null }
