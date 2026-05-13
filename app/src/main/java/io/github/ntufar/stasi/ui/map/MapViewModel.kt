@@ -362,7 +362,7 @@ class MapViewModel(
                     }
                 }
                 while (isActive) {
-                    fetchLiveData(routeForLive)
+                    fetchLiveData(routeForLive, forceBusesRefresh = false)
                     delay(LIVE_REFRESH_MS)
                 }
             } catch (e: CancellationException) {
@@ -391,22 +391,21 @@ class MapViewModel(
      * Out-of-cycle refresh of buses + route stops. Triggered by `MapScreen` when the screen
      * returns to RESUMED so the map shows fresh data immediately after the user navigates back
      * to it, instead of waiting up to [LIVE_REFRESH_MS] for the next tick.
-     * Skips refresh if bus location cache is still fresh.
+     * Always re-fetches bus positions (bypasses the short bus-location cache).
      */
     fun refreshNow() {
         val state = _uiState.value
         val routeCode = state.appliedRouteCode
         if (routeCode.isBlank() || state.stops.isEmpty()) return
-        if (repository.isBusLocationCacheFresh(routeCode)) return
         viewModelScope.launch {
-            fetchLiveData(routeCode)
+            fetchLiveData(routeCode, forceBusesRefresh = true)
         }
     }
 
-    private suspend fun fetchLiveData(routeCode: String) {
+    private suspend fun fetchLiveData(routeCode: String, forceBusesRefresh: Boolean = false) {
         val buses = try {
             withContext(Dispatchers.IO) {
-                repository.getBusesOnRoute(routeCode)
+                repository.getBusesOnRoute(routeCode, forceRefresh = forceBusesRefresh)
             }
         } catch (e: CancellationException) {
             throw e

@@ -158,7 +158,8 @@ class OasaRepository(
         const val ROUTES_FOR_STOP_TTL_MS = 24L * 60 * 60 * 1000L
         const val ROUTE_STOPS_TTL_MS = 24L * 60 * 60 * 1000L
         const val BUS_LOCATION_TTL_MS = 15 * 1000L
-        const val CLOSEST_STOPS_TTL_MS = 24L * 60 * 60 * 1000L
+        /** Short TTL: same rounded GPS key can sit for hours; Home / manual map nearby should not freeze for a day. */
+        const val CLOSEST_STOPS_TTL_MS = 5L * 60 * 1000L
         const val LINE_ROUTE_INFO_TTL_MS = 24L * 60 * 60 * 1000L
     }
 
@@ -940,17 +941,21 @@ class OasaRepository(
         }
     }
 
-    suspend fun getBusesOnRoute(routeCode: String): List<BusOnRoute> {
+    suspend fun getBusesOnRoute(routeCode: String, forceRefresh: Boolean = false): List<BusOnRoute> {
         val rc = routeCode.trim()
         if (rc.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
-        busLocationCache[rc]?.let { entry ->
-            if (now - entry.timestamp < BUS_LOCATION_TTL_MS) return entry.data
+        if (!forceRefresh) {
+            busLocationCache[rc]?.let { entry ->
+                if (now - entry.timestamp < BUS_LOCATION_TTL_MS) return entry.data
+            }
         }
         val mutex = busLocationLocks.getOrPut(rc) { Mutex() }
         return mutex.withLock {
-            busLocationCache[rc]?.let { entry ->
-                if (System.currentTimeMillis() - entry.timestamp < BUS_LOCATION_TTL_MS) return@withLock entry.data
+            if (!forceRefresh) {
+                busLocationCache[rc]?.let { entry ->
+                    if (System.currentTimeMillis() - entry.timestamp < BUS_LOCATION_TTL_MS) return@withLock entry.data
+                }
             }
             try {
                 val raw = limiter.run(EndpointRateLimiter.EP_BUS_LOCATION) {
@@ -970,17 +975,6 @@ class OasaRepository(
         }
     }
 
-    /** Check if bus location cache is fresh without fetching. */
-    fun isBusLocationCacheFresh(routeCode: String): Boolean {
-        val rc = routeCode.trim()
-        if (rc.isEmpty()) return false
-        val now = System.currentTimeMillis()
-        return busLocationCache[rc]?.let { entry ->
-            now - entry.timestamp < BUS_LOCATION_TTL_MS
-        } ?: false
-    }
-
-    /** Internal OASA line code for [getRouteDailyTimetable], from cache when available. */
     suspend fun lineCodeForRoute(routeCode: String): String? {
         val rc = routeCode.trim().ifBlank { return null }
         return try {
