@@ -62,9 +62,10 @@ class ArrivalsViewModel(
                 }
         }
         pollJob = viewModelScope.launch {
+            fetchOnce(forceRefresh = true)
             while (isActive) {
-                fetchOnce()
                 delay(POLL_INTERVAL_MS)
+                fetchOnce(forceRefresh = false)
             }
         }
         viewModelScope.launch {
@@ -114,14 +115,14 @@ class ArrivalsViewModel(
 
     fun refreshNow() {
         viewModelScope.launch {
-            fetchOnce()
+            fetchOnce(forceRefresh = true)
         }
     }
 
-    private suspend fun fetchOnce() {
+    private suspend fun fetchOnce(forceRefresh: Boolean) {
         runCatching {
             val title = repository.getStopLabel(stopCode)
-            val snapshot = repository.getStopArrivalsSnapshot(stopCode)
+            val snapshot = repository.getStopArrivalsSnapshot(stopCode, forceRefresh = forceRefresh)
             val raw = snapshot.arrivals.sortedBy { it.minutes }
             val withOrigin = repository.enrichArrivalsWithOrigin(stopCode, raw)
             val withWarning = repository.enrichArrivalsWithLastBusWarning(withOrigin)

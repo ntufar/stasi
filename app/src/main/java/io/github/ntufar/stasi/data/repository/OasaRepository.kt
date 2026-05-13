@@ -45,7 +45,8 @@ private fun rethrowIfCancellation(e: Exception) {
 /** Bumped so existing installs re-sync lines/stops with richer search norms (line number, codes). */
 private const val META_LINES = "lines_v2"
 private const val TWENTY_FOUR_H_MS = 24L * 60 * 60 * 1000
-private const val ARRIVAL_CACHE_MS = 30_000L
+/** Room + in-memory short-circuit for deduping rapid reads (enrichment, alerts). Keep below ArrivalsViewModel poll interval so periodic refresh hits the network. */
+private const val ARRIVAL_CACHE_MS = 20_000L
 
 data class RouteStop(
     val stopCode: String,
@@ -601,29 +602,35 @@ class OasaRepository(
         return if (scheduleEntries.isEmpty()) arrivals else arrivals + scheduleEntries
     }
 
-    suspend fun getStopArrivalsSnapshot(stopCode: String): ArrivalSnapshot {
+    /**
+     * @param forceRefresh when true, skips the short-lived Room/in-memory freshness gate so the
+     * next call always performs a network fetch (subject to in-flight coalescing for the same stop).
+     */
+    suspend fun getStopArrivalsSnapshot(stopCode: String, forceRefresh: Boolean = false): ArrivalSnapshot {
         val now = System.currentTimeMillis()
-        val minFresh = now - ARRIVAL_CACHE_MS
-        val cached = try {
-            dao.arrivalsFresh(stopCode, minFresh)
-        } catch (_: Exception) {
-            emptyList()
+        if (!forceRefresh) {
+            val minFresh = now - ARRIVAL_CACHE_MS
+            val cached = try {
+                dao.arrivalsFresh(stopCode, minFresh)
+            } catch (_: Exception) {
+                emptyList()
+            }
+            if (cached.isNotEmpty()) {
+                return ArrivalSnapshot(
+                    arrivals = cached.map { it.toDetail() },
+                    fetchedAtMillis = cached.maxOfOrNull { it.fetchedAtMillis },
+                )
+            }
+            val lastFetch = arrivalsFetchTime[stopCode]
+            if (lastFetch != null && lastFetch >= minFresh) {
+                return ArrivalSnapshot(arrivals = emptyList(), fetchedAtMillis = lastFetch)
+            }
         }
-        if (cached.isNotEmpty()) {
-            return ArrivalSnapshot(
-                arrivals = cached.map { it.toDetail() },
-                fetchedAtMillis = cached.maxOfOrNull { it.fetchedAtMillis },
-            )
-        }
-        val lastFetch = arrivalsFetchTime[stopCode]
-        if (lastFetch != null && lastFetch >= minFresh) {
-            return ArrivalSnapshot(arrivals = emptyList(), fetchedAtMillis = lastFetch)
-        }
-        return fetchAndCacheArrivalsSnapshot(stopCode, now)
+        return fetchAndCacheArrivalsSnapshot(stopCode, System.currentTimeMillis())
     }
 
     suspend fun getStopArrivals(stopCode: String): List<ArrivalDetail> =
-        getStopArrivalsSnapshot(stopCode).arrivals
+        getStopArrivalsSnapshot(stopCode, forceRefresh = false).arrivals
 
     private suspend fun fetchAndCacheArrivalsSnapshot(stopCode: String, now: Long): ArrivalSnapshot {
         arrivalsFetchJobs[stopCode]?.let { existingJob ->
