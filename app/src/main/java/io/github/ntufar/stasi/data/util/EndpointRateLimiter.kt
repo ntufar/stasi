@@ -53,5 +53,9 @@ class EndpointRateLimiter(private val minIntervalMs: Long = 1_200L) {
         /** One bucket per route so background ingest does not block the user's route fetch. */
         fun gateWebGetStops(routeCode: String): String =
             "$EP_WEB_GET_STOPS::${routeCode.trim()}"
+
+        /** One bucket per line so timetable enrichment for many routes does not serialize on one queue. */
+        fun gateGetDailySchedule(lineCode: String): String =
+            "$EP_GET_DAILY_SCHEDULE::${lineCode.trim()}"
     }
 }

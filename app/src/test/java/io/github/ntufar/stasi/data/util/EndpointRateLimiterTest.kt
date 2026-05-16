@@ -20,4 +20,12 @@ class EndpointRateLimiterTest {
             EndpointRateLimiter.gateWebGetStops(" 2033 "),
         )
     }
+
+    @Test
+    fun gateGetDailySchedule_includesTrimmedLineCode() {
+        assertEquals(
+            "getDailySchedule::750",
+            EndpointRateLimiter.gateGetDailySchedule(" 750 "),
+        )
+    }
 }

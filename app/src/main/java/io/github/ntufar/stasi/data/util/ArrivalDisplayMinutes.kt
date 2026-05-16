@@ -1,13 +1,11 @@
-package io.github.ntufar.stasi.ui.arrivals
-
-import io.github.ntufar.stasi.data.util.ARRIVAL_MINUTES_UNKNOWN
+package io.github.ntufar.stasi.data.util
 
 /**
  * Minutes shown between API polls: [minutes] is the value at [snapshotMillis]; subtract whole
  * minutes elapsed since then so the countdown does not look frozen when the API repeats the same
  * integer or refresh is delayed.
  */
-internal fun effectiveMinutesSinceSnapshot(
+fun effectiveMinutesSinceSnapshot(
     minutes: Int,
     snapshotMillis: Long?,
     nowMillis: Long,

@@ -31,7 +31,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
@@ -151,7 +150,7 @@ class OasaRepository(
     private val lineRouteInfoLocks = ConcurrentHashMap<String, Mutex>()
     private val arrivalsFetchTime = ConcurrentHashMap<String, Long>()
     private val originStopCodeCache = ConcurrentHashMap<String, String?>()
-    private val arrivalsFetchJobs = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<ArrivalSnapshot>>()
+    private val arrivalsFetchLocks = ConcurrentHashMap<String, Mutex>()
 
     private companion object CacheTtl {
         const val TIMETABLE_TTL_MS = 6L * 60 * 60 * 1000L
@@ -540,22 +539,60 @@ class OasaRepository(
         }
         val zone = ZoneId.of("Europe/Athens")
         val now = ZonedDateTime.now(zone)
+        val candidateRows = orderedRoutes.mapNotNull { row ->
+            val rc = row.routeCode?.trim().orEmpty()
+            if (rc.isBlank() || rc in liveRoutes) return@mapNotNull null
+            val lc = row.lineCode?.trim().orEmpty()
+            if (lc.isBlank()) return@mapNotNull null
+            rc to row
+        }
+        if (candidateRows.isEmpty()) return arrivals
+
+        val lineCodesToFetch = candidateRows.map { it.second.lineCode!!.trim() }.distinct()
+        val routeCodesToFetch = candidateRows.map { it.first }.distinct()
+        val timetableByLine = coroutineScope {
+            lineCodesToFetch.associateWith { lc ->
+                async {
+                    try {
+                        getRouteDailyTimetable(lc)
+                    } catch (e: Exception) {
+                        rethrowIfCancellation(e)
+                        null
+                    }
+                }
+            }.mapValues { it.value.await() }
+        }
+        val originByRoute = coroutineScope {
+            routeCodesToFetch.associateWith { rc ->
+                async {
+                    try {
+                        getRouteOriginStopCode(rc)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }.mapValues { it.value.await() }
+        }
+        val originStopCodes = originByRoute.values.filterNotNull().distinct()
+        val labelByOriginStop = coroutineScope {
+            originStopCodes.associateWith { code ->
+                async {
+                    try {
+                        getStopLabel(code).ifBlank { null }
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }.mapValues { it.value.await() }
+        }
+
         val scheduleEntries = mutableListOf<ArrivalDetail>()
         val seenLineCodes = mutableSetOf<String>()
-        for (row in orderedRoutes) {
-            val rc = row.routeCode?.trim().orEmpty()
-            if (rc.isBlank()) continue
-            if (rc in liveRoutes) continue
-            val lc = row.lineCode?.trim().orEmpty()
-            if (lc.isBlank()) continue
+        for ((rc, row) in candidateRows) {
+            val lc = row.lineCode!!.trim()
             if (lc in seenLineCodes) continue
             seenLineCodes.add(lc)
-            val tt = try {
-                getRouteDailyTimetable(lc)
-            } catch (e: Exception) {
-                rethrowIfCancellation(e)
-                continue
-            }
+            val tt = timetableByLine[lc] ?: continue
             val next = nextOriginScheduleStart(tt, now) ?: continue
             val (departureTime, startsNextCalendarDay) = next
             val mins = minutesUntilClock(now, departureTime, startsNextCalendarDay)
@@ -571,18 +608,10 @@ class OasaRepository(
                 directionName.isNotBlank() -> directionName
                 else -> lc
             }
-            val originStopCode = try {
-                getRouteOriginStopCode(rc)
-            } catch (_: Exception) {
-                null
-            }
+            val originStopCode = originByRoute[rc]
             val isOriginStop = originStopCode == stopCode
             val originLabel = if (!isOriginStop && originStopCode != null) {
-                try {
-                    getStopLabel(originStopCode).ifBlank { null }
-                } catch (_: Exception) {
-                    null
-                }
+                labelByOriginStop[originStopCode]
             } else {
                 null
             }
@@ -601,6 +630,23 @@ class OasaRepository(
             )
         }
         return if (scheduleEntries.isEmpty()) arrivals else arrivals + scheduleEntries
+    }
+
+    /**
+     * Applies origin hints, last-bus warnings, and schedule-only rows for the Arrivals screen.
+     * Call after live arrivals are known; safe to run off the UI-critical path.
+     */
+    suspend fun enrichStopArrivals(
+        stopCode: String,
+        arrivals: List<ArrivalDetail>,
+        routeCodeHint: String? = null,
+    ): List<ArrivalDetail> {
+        if (arrivals.isEmpty()) {
+            return addScheduleOnlyDepartures(stopCode, arrivals, routeCodeHint)
+        }
+        val withOrigin = enrichArrivalsWithOrigin(stopCode, arrivals)
+        val withWarning = enrichArrivalsWithLastBusWarning(withOrigin)
+        return addScheduleOnlyDepartures(stopCode, withWarning, routeCodeHint)
     }
 
     /**
@@ -634,44 +680,48 @@ class OasaRepository(
         getStopArrivalsSnapshot(stopCode, forceRefresh = false).arrivals
 
     private suspend fun fetchAndCacheArrivalsSnapshot(stopCode: String, now: Long): ArrivalSnapshot {
-        arrivalsFetchJobs[stopCode]?.let { existingJob ->
-            return existingJob.await()
-        }
+        val mutex = arrivalsFetchLocks.getOrPut(stopCode) { Mutex() }
+        return mutex.withLock {
+            val minFresh = now - ARRIVAL_CACHE_MS
+            val cached = try {
+                dao.arrivalsFresh(stopCode, minFresh)
+            } catch (_: Exception) {
+                emptyList()
+            }
+            if (cached.isNotEmpty()) {
+                return@withLock ArrivalSnapshot(
+                    arrivals = cached.map { it.toDetail() },
+                    fetchedAtMillis = cached.maxOfOrNull { it.fetchedAtMillis },
+                )
+            }
+            try {
+                cleanupOldArrivalsTrackingEntries()
 
-        val job = coroutineScope {
-            async {
-                try {
-                    cleanupOldArrivalsTrackingEntries()
-
-                    val routesAtStop = try {
-                        getRoutesForStop(stopCode).routeMetaByRouteCode()
-                    } catch (_: Exception) {
-                        emptyMap()
-                    }
-                    val json = limiter.run(EndpointRateLimiter.EP_GET_ARRIVALS) {
-                        api.getStopArrivals(stopCode = stopCode)
-                    }
-                    val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now, routesAtStop) }
-                    dao.replaceArrivals(stopCode, rows)
-                    arrivalsFetchTime[stopCode] = now
-                    ArrivalSnapshot(arrivals = rows.map { it.toDetail() }, fetchedAtMillis = now)
+                val routesAtStop = try {
+                    getRoutesForStop(stopCode).routeMetaByRouteCode()
                 } catch (_: Exception) {
-                    val stale = try {
-                        dao.arrivalsFresh(stopCode, 0L)
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                    ArrivalSnapshot(
-                        arrivals = stale.map { it.toDetail() },
-                        fetchedAtMillis = try { dao.latestArrivalFetch(stopCode) } catch (_: Exception) { null },
-                    )
-                } finally {
-                    arrivalsFetchJobs.remove(stopCode)
+                    emptyMap()
                 }
+                val json = limiter.run(EndpointRateLimiter.EP_GET_ARRIVALS) {
+                    api.getStopArrivals(stopCode = stopCode)
+                }
+                val rows = json.mapNotNull { mapArrivalJson(it, stopCode, now, routesAtStop) }
+                    .distinctBy { "${it.routeCode}\u0000${it.vehCode}" }
+                dao.replaceArrivals(stopCode, rows)
+                arrivalsFetchTime[stopCode] = now
+                ArrivalSnapshot(arrivals = rows.map { it.toDetail() }, fetchedAtMillis = now)
+            } catch (_: Exception) {
+                val stale = try {
+                    dao.arrivalsFresh(stopCode, 0L)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                ArrivalSnapshot(
+                    arrivals = stale.map { it.toDetail() },
+                    fetchedAtMillis = try { dao.latestArrivalFetch(stopCode) } catch (_: Exception) { null },
+                )
             }
         }
-        arrivalsFetchJobs[stopCode] = job
-        return job.await()
     }
 
     private fun cleanupOldArrivalsTrackingEntries() {
@@ -1000,7 +1050,7 @@ class OasaRepository(
                 if (System.currentTimeMillis() - entry.timestamp < TIMETABLE_TTL_MS) return entry.data
             }
             try {
-                val raw = limiter.run(EndpointRateLimiter.EP_GET_DAILY_SCHEDULE) {
+                val raw = limiter.run(EndpointRateLimiter.gateGetDailySchedule(lc)) {
                     api.getDailySchedule(lineCode = lc)
                 }
                 val result = RouteDailyTimetable(
@@ -1076,13 +1126,21 @@ class OasaRepository(
         arrivals: List<ArrivalDetail>,
     ): Map<String, String> {
         val distinctRoutes = arrivals.map { it.routeCode }.filter { it.isNotBlank() }.distinct()
-        val out = LinkedHashMap<String, String>()
-        for (route in distinctRoutes) {
-            val origin = getRouteOriginStopCode(route) ?: continue
-            if (origin == stopCode) continue
-            out[route] = origin
+        if (distinctRoutes.isEmpty()) return emptyMap()
+        return coroutineScope {
+            val pairs = distinctRoutes.map { route ->
+                async {
+                    val origin = getRouteOriginStopCode(route) ?: return@async null
+                    if (origin == stopCode) return@async null
+                    route to origin
+                }
+            }
+            buildMap {
+                for (deferred in pairs) {
+                    deferred.await()?.let { (route, origin) -> put(route, origin) }
+                }
+            }
         }
-        return out
     }
 
     private suspend fun mapArrivalJson(

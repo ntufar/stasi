@@ -3,9 +3,6 @@ package io.github.ntufar.stasi.ui.arrivals
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.workDataOf
 import androidx.work.WorkManager
 import io.github.ntufar.stasi.R
 import io.github.ntufar.stasi.data.repository.AlertsRepository
@@ -15,6 +12,8 @@ import io.github.ntufar.stasi.data.repository.OasaRepository
 import io.github.ntufar.stasi.data.repository.RecentActivityRepository
 import io.github.ntufar.stasi.workers.ArrivalAlertWorker
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,21 +97,14 @@ class ArrivalsViewModel(
                     .cancelUniqueWork(ArrivalAlertWorker.uniqueWorkName(stopCode, routeCode, vehCode))
             } else {
                 alertsRepository.addAlert(stopCode, routeCode, vehCode)
-                val request = OneTimeWorkRequestBuilder<ArrivalAlertWorker>()
-                    .setInputData(workDataOf(
-                        ArrivalAlertWorker.KEY_STOP_CODE to stopCode,
-                        ArrivalAlertWorker.KEY_ROUTE_CODE to routeCode,
-                        ArrivalAlertWorker.KEY_VEH_CODE to vehCode,
-                        ArrivalAlertWorker.KEY_LINE_LABEL to lineLabel,
-                        ArrivalAlertWorker.KEY_STOP_TITLE to _uiState.value.title.ifBlank { stopCode },
-                    ))
-                    .build()
-                WorkManager.getInstance(appContext)
-                    .enqueueUniqueWork(
-                        ArrivalAlertWorker.uniqueWorkName(stopCode, routeCode, vehCode),
-                        ExistingWorkPolicy.REPLACE,
-                        request,
-                    )
+                ArrivalAlertWorker.schedule(
+                    context = appContext,
+                    stopCode = stopCode,
+                    routeCode = routeCode,
+                    vehCode = vehCode,
+                    lineLabel = lineLabel,
+                    stopTitle = _uiState.value.title.ifBlank { stopCode },
+                )
             }
         }
     }
@@ -138,21 +130,32 @@ class ArrivalsViewModel(
     private suspend fun fetchOnce(forceRefresh: Boolean) {
         runCatching {
             val title = repository.getStopLabel(stopCode)
+            if (forceRefresh && _uiState.value.arrivals.isEmpty()) {
+                val cached = repository.getStopArrivalsSnapshot(stopCode, forceRefresh = false)
+                if (cached.arrivals.isNotEmpty()) {
+                    publishBasicArrivals(
+                        title = title,
+                        arrivals = cached.arrivals.sortedBy { it.minutes },
+                        lastUpdatedMillis = cached.fetchedAtMillis,
+                    )
+                }
+            }
             val snapshot = repository.getStopArrivalsSnapshot(stopCode, forceRefresh = forceRefresh)
             val raw = snapshot.arrivals.sortedBy { it.minutes }
-            val withOrigin = repository.enrichArrivalsWithOrigin(stopCode, raw)
-            val withWarning = repository.enrichArrivalsWithLastBusWarning(withOrigin)
-            val withScheduleOnly = repository.addScheduleOnlyDepartures(stopCode, withWarning, routeCodeHint)
-            val siblingRoutes = resolveSiblingRoutes()
-            val arrivals = sortByRouteHint(withScheduleOnly, siblingRoutes)
-            val fav = favoritesRepository.isFavorite(stopCode)
+            publishBasicArrivals(
+                title = title,
+                arrivals = raw,
+                lastUpdatedMillis = snapshot.fetchedAtMillis,
+            )
+            val (siblingRoutes, enriched) = coroutineScope {
+                val siblings = async { resolveSiblingRoutes() }
+                val enrichedArrivals = async { repository.enrichStopArrivals(stopCode, raw, routeCodeHint) }
+                siblings.await() to enrichedArrivals.await()
+            }
+            val arrivals = sortByRouteHint(enriched, siblingRoutes)
             _uiState.update {
                 it.copy(
-                    title = title,
                     arrivals = arrivals,
-                    lastUpdatedMillis = snapshot.fetchedAtMillis,
-                    isFavorite = fav,
-                    isLoading = false,
                     error = null,
                 )
             }
@@ -163,6 +166,24 @@ class ArrivalsViewModel(
                     error = appContext.getString(R.string.arrivals_load_failed),
                 )
             }
+        }
+    }
+
+    private suspend fun publishBasicArrivals(
+        title: String,
+        arrivals: List<ArrivalDetail>,
+        lastUpdatedMillis: Long?,
+    ) {
+        val fav = favoritesRepository.isFavorite(stopCode)
+        _uiState.update {
+            it.copy(
+                title = title,
+                arrivals = sortByRouteHint(arrivals, emptySet()),
+                lastUpdatedMillis = lastUpdatedMillis,
+                isFavorite = fav,
+                isLoading = false,
+                error = null,
+            )
         }
     }
 

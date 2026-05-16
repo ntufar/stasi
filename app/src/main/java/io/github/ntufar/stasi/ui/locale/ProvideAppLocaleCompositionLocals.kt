@@ -3,13 +3,12 @@ package io.github.ntufar.stasi.ui.locale
 import android.content.ContextWrapper
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.os.LocaleList
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import io.github.ntufar.stasi.data.repository.SettingsRepository
+import io.github.ntufar.stasi.util.withAppLocaleTag
 
 /**
  * Overrides [LocalContext] and [LocalConfiguration] so Compose [androidx.compose.ui.res.stringResource]
@@ -24,13 +23,8 @@ fun ProvideAppLocaleCompositionLocals(
 ) {
     val baseContext = LocalContext.current
     val localeOverlayContext = remember(baseContext, localeTag) {
-        val config = Configuration(baseContext.resources.configuration)
-        val tags = when (localeTag) {
-            SettingsRepository.LANGUAGE_EN -> SettingsRepository.LANGUAGE_EN
-            else -> SettingsRepository.LANGUAGE_EL
-        }
-        config.setLocales(LocaleList.forLanguageTags(tags))
-        val localizedResources = baseContext.createConfigurationContext(config).resources
+        val localized = baseContext.withAppLocaleTag(localeTag)
+        val localizedResources = localized.resources
         object : ContextWrapper(baseContext) {
             override fun getResources(): Resources = localizedResources
         }

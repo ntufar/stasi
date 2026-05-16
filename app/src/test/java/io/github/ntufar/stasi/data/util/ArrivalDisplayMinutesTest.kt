@@ -1,6 +1,5 @@
-package io.github.ntufar.stasi.ui.arrivals
+package io.github.ntufar.stasi.data.util
 
-import io.github.ntufar.stasi.data.util.ARRIVAL_MINUTES_UNKNOWN
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
