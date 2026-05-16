@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+
+
+- When implementing a new feature, write tests for it
+- When updating some code, update the tests as well to reflect the changes in code if necessary

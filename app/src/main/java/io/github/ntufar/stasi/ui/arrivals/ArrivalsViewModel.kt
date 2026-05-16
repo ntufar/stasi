@@ -30,6 +30,7 @@ data class ArrivalsUiState(
     val lastUpdatedMillis: Long? = null,
     val isFavorite: Boolean = false,
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val activeAlertKeys: Set<String> = emptySet(),
 )
@@ -65,7 +66,10 @@ class ArrivalsViewModel(
             fetchOnce(forceRefresh = true)
             while (isActive) {
                 delay(POLL_INTERVAL_MS)
-                fetchOnce(forceRefresh = false)
+                // Always bypass the short Room cache so open Arrivals keeps polling the API; stale
+                // cache + StateFlow structural equality could otherwise leave the UI unchanged for
+                // long stretches when the operator repeats the same ETA integer.
+                fetchOnce(forceRefresh = true)
             }
         }
         viewModelScope.launch {
@@ -116,6 +120,18 @@ class ArrivalsViewModel(
     fun refreshNow() {
         viewModelScope.launch {
             fetchOnce(forceRefresh = true)
+        }
+    }
+
+    /** User pull-to-refresh: same fetch as [refreshNow] but drives the Material pull indicator until complete. */
+    fun onPullToRefresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            try {
+                fetchOnce(forceRefresh = true)
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
         }
     }
 

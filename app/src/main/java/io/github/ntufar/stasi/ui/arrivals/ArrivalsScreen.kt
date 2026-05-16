@@ -40,16 +40,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -70,6 +76,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.ntufar.stasi.di.LocalAppContainer
 import io.github.ntufar.stasi.util.freshnessUpdatedLabel
 import android.widget.Toast
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+
+private const val ARRIVALS_DISPLAY_TICK_MS = 15_000L
 
 private fun shareMinutes(context: android.content.Context, minutes: Int): String =
     if (minutes >= 999) {
@@ -167,13 +177,25 @@ fun ArrivalsScreen(
         },
     )
     val ui by vm.uiState.collectAsStateWithLifecycle()
-    val listRows = remember(ui.arrivals) { buildArrivalListRows(ui.arrivals) }
-    val mapRouteCode = remember(ui.arrivals) {
-        ui.arrivals.firstOrNull { it.routeCode.isNotBlank() }?.routeCode
-    }
+    val pullRefreshState = rememberPullToRefreshState()
+    val thresholdPx = with(LocalDensity.current) { PullToRefreshDefaults.PositionalThreshold.toPx() }
+    val pullTranslationY = pullRefreshState.distanceFraction * thresholdPx
+    val listRows = buildArrivalListRows(ui.arrivals)
+    val mapRouteCode = ui.arrivals.firstOrNull { it.routeCode.isNotBlank() }?.routeCode
     val clipboard = LocalClipboardManager.current
 
+    var displayNowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            displayNowMillis = System.currentTimeMillis()
+            while (isActive) {
+                delay(ARRIVALS_DISPLAY_TICK_MS)
+                displayNowMillis = System.currentTimeMillis()
+            }
+        }
+    }
+
     LaunchedEffect(vm, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             vm.refreshNow()
@@ -333,14 +355,40 @@ fun ArrivalsScreen(
             )
         },
     ) { padding ->
-        if (ui.isLoading && ui.arrivals.isEmpty()) {
-            CircularProgressIndicator(Modifier.padding(padding).padding(24.dp))
-        } else {
+        PullToRefreshBox(
+            isRefreshing = ui.isRefreshing,
+            onRefresh = { vm.onPullToRefresh() },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            state = pullRefreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    state = pullRefreshState,
+                    isRefreshing = ui.isRefreshing,
+                )
+            },
+        ) {
             LazyColumn(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                ) {
+                    .graphicsLayer {
+                        translationY = pullTranslationY
+                    },
+            ) {
+                if (ui.isLoading && ui.arrivals.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
                     item {
                         ui.error?.let { msg ->
                             Text(
@@ -362,30 +410,41 @@ fun ArrivalsScreen(
                     items(
                         listRows,
                         key = { row ->
-                        when (row) {
-                            is ArrivalListRow.Live ->
-                                "live-${row.detail.routeCode}-${row.detail.vehCode}-${row.detail.minutes}"
-                            is ArrivalListRow.ScheduledOriginDeparture ->
-                                "sched-${row.routeCode}-${row.clock}"
-                        }
-                    },
-                ) { row ->
+                            when (row) {
+                                is ArrivalListRow.Live ->
+                                    "live-${row.detail.routeCode}-${row.detail.vehCode}"
+                                is ArrivalListRow.ScheduledOriginDeparture ->
+                                    "sched-${row.routeCode}-${row.clock}"
+                            }
+                        },
+                    ) { row ->
                     when (row) {
                         is ArrivalListRow.Live -> {
                             val a = row.detail
-                            val minutesText = if (a.minutes >= 999) {
+                            val displayMinutes = effectiveMinutesSinceSnapshot(
+                                a.minutes,
+                                ui.lastUpdatedMillis,
+                                displayNowMillis,
+                            )
+                            val minutesText = if (displayMinutes >= 999) {
                                 "—"
                             } else {
-                                stringResource(R.string.minutes_short, a.minutes)
+                                stringResource(R.string.minutes_short, displayMinutes)
                             }
                             val originText = a.originDepartureMinutes?.let { om ->
                                 if (om >= 999) return@let null
+                                val omDisplay = effectiveMinutesSinceSnapshot(
+                                    om,
+                                    ui.lastUpdatedMillis,
+                                    displayNowMillis,
+                                )
+                                if (omDisplay >= 999) return@let null
                                 val oLabel = a.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
                                 val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
                                 stringResource(
                                     R.string.arrivals_from_origin_minutes,
                                     fromPart,
-                                    stringResource(R.string.minutes_short, om),
+                                    stringResource(R.string.minutes_short, omDisplay),
                                 )
                             }
                             Row(
@@ -405,7 +464,7 @@ fun ArrivalsScreen(
                                         minutesText,
                                         fontSize = 48.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (a.minutes >= 999) scheme.onSurfaceVariant else scheme.primary,
+                                        color = if (displayMinutes >= 999) scheme.onSurfaceVariant else scheme.primary,
                                     )
                                     Spacer(Modifier.height(10.dp))
                                     Row(
@@ -470,10 +529,15 @@ fun ArrivalsScreen(
                             val scheme = MaterialTheme.colorScheme
                             val oLabel = row.originStopDescription?.takeIf { it.isNotBlank() } ?: ""
                             val fromPart = if (oLabel.isNotEmpty()) " ($oLabel)" else ""
+                            val schedDisplayMin = effectiveMinutesSinceSnapshot(
+                                row.minutesUntil,
+                                ui.lastUpdatedMillis,
+                                displayNowMillis,
+                            )
                             val approx = when {
-                                row.minutesUntil >= 999 -> null
-                                row.minutesUntil <= 0 -> stringResource(R.string.arrivals_traffic_approx_less_than)
-                                else -> stringResource(R.string.arrivals_traffic_approx_minutes, row.minutesUntil)
+                                schedDisplayMin >= 999 -> null
+                                schedDisplayMin <= 0 -> stringResource(R.string.arrivals_traffic_approx_less_than)
+                                else -> stringResource(R.string.arrivals_traffic_approx_minutes, schedDisplayMin)
                             }
                             Column(
                                 Modifier
@@ -515,6 +579,7 @@ fun ArrivalsScreen(
                     }
                 }
             }
+        }
         }
     }
 }
