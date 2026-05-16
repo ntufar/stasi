@@ -8,9 +8,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Stasi — Athens bus arrivals, fast &amp; private</title>
-  <meta name="description" content="Open-source Android app for Athens public transport: live arrivals, nearby stops, route maps. No ads or accounts.">
+  <meta name="description" content="Open-source Android app for Athens public transport: live arrivals, arrival alerts, route maps and timetables, nearby stops. No ads or accounts.">
   <meta property="og:title" content="Stasi — Athens bus app">
-  <meta property="og:description" content="Fast, private Android app for Athens buses and transit.">
+  <meta property="og:description" content="Fast, private Android app for Athens buses: live ETAs, local arrival alerts, route maps, and Greek-aware search.">
   <meta property="og:type" content="website">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="favicon.svg">
@@ -24,8 +24,9 @@
       --border: #1e2230;
       --text: #e8eaef;
       --muted: #8b93a7;
-      --accent: #3dd6c6;
-      --accent-dim: rgba(61, 214, 198, 0.12);
+      --accent: #4fc3f7;
+      --accent-dim: rgba(79, 195, 247, 0.12);
+      --amber: #ffb74d;
       --radius: 14px;
       --max: 880px;
     }
@@ -64,7 +65,7 @@
       height: 560px;
       top: -180px;
       right: -120px;
-      background: radial-gradient(circle, rgba(61, 214, 198, 0.22) 0%, transparent 68%);
+      background: radial-gradient(circle, rgba(79, 195, 247, 0.2) 0%, rgba(255, 183, 77, 0.06) 42%, transparent 68%);
       pointer-events: none;
       z-index: 0;
     }
@@ -107,7 +108,7 @@
       text-transform: uppercase;
       color: var(--accent);
       background: var(--accent-dim);
-      border: 1px solid rgba(61, 214, 198, 0.35);
+      border: 1px solid rgba(79, 195, 247, 0.35);
       padding: 0.35rem 0.75rem;
       border-radius: 999px;
       margin-bottom: 1.25rem;
@@ -155,7 +156,7 @@
 
     a.btn-primary {
       background: var(--accent);
-      color: #041312;
+      color: #041018;
     }
 
     a.btn-primary:hover {
@@ -169,7 +170,7 @@
     }
 
     a.btn-secondary:hover {
-      border-color: rgba(61, 214, 198, 0.45);
+      border-color: rgba(79, 195, 247, 0.45);
     }
 
     main {
@@ -216,6 +217,16 @@
       color: var(--muted);
     }
 
+    .card a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(79, 195, 247, 0.35);
+    }
+
+    .card a:hover {
+      border-bottom-color: var(--accent);
+    }
+
     .list {
       margin: 0;
       padding-left: 1.2rem;
@@ -238,7 +249,7 @@
     .spec-link a {
       color: var(--accent);
       text-decoration: none;
-      border-bottom: 1px solid rgba(61, 214, 198, 0.35);
+      border-bottom: 1px solid rgba(79, 195, 247, 0.35);
     }
 
     .spec-link a:hover {
@@ -279,12 +290,13 @@
 
   <header>
     <div class="wrap">
-      <img class="app-icon" src="favicon.svg" width="72" height="72" alt="" aria-hidden="true">
+      <img class="app-icon" src="favicon.svg" width="72" height="72" alt="Stasi app icon: map pin with bus and live arrival beacon">
       <div class="badge">Open source · Athens transit</div>
       <h1>See your bus in under a second.</h1>
       <p class="lead">
-        <strong>Stasi</strong> is a fast, private Android app for Athens public transport—live arrivals,
-        nearby stops, and route maps without ads, accounts, or clutter. Greek-first UI with English fallback.
+        <strong>Stasi</strong> (Greek <strong>Στάση</strong>) is a fast, private Android app for Athens public transport—live
+        arrivals that count down between updates, optional <strong>arrival alerts</strong>, route maps with timetables,
+        and nearby stops. No ads, accounts, or clutter. Greek-first UI with instant English/Greek switching.
       </p>
       <div class="actions">
         <a class="btn btn-primary" href="https://github.com/ntufar/stasi">View on GitHub</a>
@@ -300,19 +312,27 @@
         <div class="grid">
           <article class="card">
             <h3>Live arrivals</h3>
-            <p>Favorite stops on the home screen with the next arrivals at a glance—big minutes, line ID, destination.</p>
+            <p>Favorites and recent stops on Home; big minutes, line ID, and direction. Minutes tick down on the clock between OASA polls so the board never looks frozen.</p>
+          </article>
+          <article class="card">
+            <h3>Arrival alerts</h3>
+            <p>Tap the bell on a live row to get a <strong>local</strong> notification when your bus is within your chosen minutes—countdown, arrived, then left. Optional quiet hours; no push server.</p>
           </article>
           <article class="card">
             <h3>Search that understands Greek</h3>
-            <p>Find stops and lines by name with fuzzy matching that ignores accents—try “syntagma” for ΣΥΝΤΑΓΜΑ.</p>
+            <p>Fuzzy match ignores accents; Greeklish like “syntagma” maps to Greek. Stop catalog syncs in the background so search is not limited to routes you have already opened.</p>
           </article>
           <article class="card">
-            <h3>Nearby &amp; maps</h3>
-            <p>GPS-sorted nearby stops and route maps with live buses and your position on the map when you allow location—MapLibre, no proprietary map keys.</p>
+            <h3>Route map &amp; timetable</h3>
+            <p>All stops on the line with direction, live buses (heading shown), tap a stop for arrivals. <strong>Map</strong> / <strong>Timetable</strong> tabs with daily origin and terminus columns.</p>
           </article>
           <article class="card">
-            <h3>Offline-friendly cache</h3>
-            <p>Lines and stops cached for hours; arrivals cached briefly so you are not stuck without signal.</p>
+            <h3>Mid-route context</h3>
+            <p>Not at the terminus? See when the next bus leaves from the route origin. <strong>Last service</strong> warning when the day’s final window is ending soon.</p>
+          </article>
+          <article class="card">
+            <h3>Fast &amp; offline-friendly</h3>
+            <p>Progressive load: cached snapshot first, then fresh data. Smart in-memory caching cuts duplicate API calls; pull-to-refresh on arrivals. Nearby stops by GPS; MapLibre, no proprietary keys.</p>
           </article>
         </div>
       </section>
@@ -322,8 +342,8 @@
         <div class="card">
           <ul class="list">
             <li>Kotlin, Jetpack Compose, Material 3 · MVVM &amp; repository pattern</li>
-            <li>Retrofit, Room, DataStore · MapLibre SDK</li>
-            <li>Data from OASA Telematics API (POST endpoints); aggressive caching and rate limits respected</li>
+            <li>Retrofit, Room, DataStore · WorkManager (arrival alerts) · MapLibre SDK</li>
+            <li>Data from OASA Telematics API (POST endpoints); per-endpoint rate limits and layered caching</li>
           </ul>
           <p class="spec-link">
             Details and acceptance criteria are in the
@@ -336,7 +356,7 @@
         <h2 id="privacy-heading">Privacy</h2>
         <div class="card">
           <p style="margin:0;color:var(--muted);font-size:0.95rem;">
-            No analytics or crash reporting in the MVP. Location is used for nearby stops and for showing your position on the route map when permitted; it is not stored (see the project spec).
+            No analytics or crash reporting. Location is used for nearby stops and your position on the map when permitted; it is not stored. Arrival alerts run entirely on-device (WorkManager polling + local notifications)—no accounts, no push server (see the <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">spec</a>).
           </p>
         </div>
       </section>

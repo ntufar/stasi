@@ -4,27 +4,29 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Live arrival / stop beacon -->
+    <!-- Route arc behind pin -->
     <path
-        android:fillColor="#FFB74D"
-        android:pathData="M54,23c3.9,0 7,3.1 7,7s-3.1,7 -7,7 -7,-3.1 -7,-7 3.1,-7 7,-7z" />
-    <!-- Upper cab -->
+        android:fillColor="#0277BD"
+        android:pathData="M14,76 C24,60 38,56 50,62 C62,68 74,48 90,54 L88,60 C72,56 62,74 50,68 C38,62 26,66 16,82 Z" />
+    <!-- Map pin -->
     <path
         android:fillColor="#4FC3F7"
-        android:pathData="M33,41h42v15h-42z" />
-    <!-- Lower body -->
+        android:pathData="M54,18 C72,18 82,32 82,46 C82,58 54,84 54,84 C54,84 26,58 26,46 C26,32 36,18 54,18 Z" />
+    <!-- Live arrival beacon -->
     <path
-        android:fillColor="#29B6F6"
-        android:pathData="M33,56h42v18h-42z" />
-    <!-- Windshield -->
+        android:fillColor="#FFB74D"
+        android:pathData="M54,42m-9,0a9,9 0,1,1 18,0a9,9 0,1,1 -18,0" />
+    <!-- Bus (front view) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,54 L65,54 Q67,54 67,56 L67,68 Q67,70 65,70 L43,70 Q41,70 41,68 L41,56 Q41,54 43,54 Z" />
     <path
         android:fillColor="#E1F5FE"
-        android:pathData="M38,44h26l-2,11h-22z" />
-    <!-- Wheels -->
+        android:pathData="M46,57 L62,57 L62,64 L46,64 Z" />
     <path
-        android:fillColor="#37474F"
-        android:pathData="M37,72h12v10h-12z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,64 L47,64 L47,66 L43,66 Z M61,64 L65,64 L65,66 L61,66 Z" />
     <path
-        android:fillColor="#37474F"
-        android:pathData="M59,72h12v10h-12z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,70 L51,70 L51,73 L45,73 Z M57,70 L63,70 L63,73 L57,73 Z" />
 </vector>
