@@ -7,6 +7,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (function () {
+      var stored = localStorage.getItem("stasi-site-lang");
+      var lang = stored === "en" || stored === "el"
+        ? stored
+        : ((navigator.language || "").toLowerCase().indexOf("el") === 0 ? "el" : "en");
+      document.documentElement.lang = lang;
+    })();
+  </script>
   <title>Stasi — Athens bus arrivals, fast &amp; private</title>
   <meta name="description" content="Open-source Android app for Athens public transport: live arrivals, arrival alerts, route maps and timetables, nearby stops. No ads or accounts.">
   <meta property="og:title" content="Stasi — Athens bus app">
@@ -37,6 +46,11 @@
 
     html {
       scroll-behavior: smooth;
+    }
+
+    html[lang="en"] .i18n-el,
+    html[lang="el"] .i18n-en {
+      display: none !important;
     }
 
     body {
@@ -89,11 +103,58 @@
       padding: 0 0.5rem;
     }
 
+    .header-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .header-top .app-icon {
+      margin-bottom: 0;
+    }
+
+    .lang-switch {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .lang-switch button {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 0.45rem 0.75rem;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .lang-switch button:hover {
+      color: var(--text);
+    }
+
+    .lang-switch button[aria-pressed="true"] {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .lang-switch button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+
     .app-icon {
       display: block;
       width: 72px;
       height: 72px;
-      margin-bottom: 1.1rem;
       border-radius: 18px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
       object-fit: cover;
@@ -291,17 +352,42 @@
 
   <header>
     <div class="wrap">
-      <img class="app-icon" src="app-icon.png?v=2" width="72" height="72" alt="Stasi app icon: map pin with bus and live arrival beacon">
-      <div class="badge">Open source · Athens transit</div>
-      <h1>See your bus in under a second.</h1>
+      <div class="header-top">
+        <img class="app-icon" id="app-icon" src="app-icon.png?v=2" width="72" height="72" alt="">
+        <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
+        </div>
+      </div>
+      <div class="badge">
+        <span class="i18n-en">Open source · Athens transit</span>
+        <span class="i18n-el">Ανοιχτού κώδικα · Μετακίνηση Αθήνας</span>
+      </div>
+      <h1>
+        <span class="i18n-en">See your bus in under a second.</span>
+        <span class="i18n-el">Δείτε το λεωφορείο σας σε λιγότερο από ένα δευτερόλεπτο.</span>
+      </h1>
       <p class="lead">
-        <strong>Stasi</strong> (Greek <strong>Στάση</strong>) is a fast, private Android app for Athens public transport—live
-        arrivals that count down between updates, optional <strong>arrival alerts</strong>, route maps with timetables,
-        and nearby stops. No ads, accounts, or clutter. Greek-first UI with instant English/Greek switching.
+        <span class="i18n-en">
+          <strong>Stasi</strong> (Greek <strong>Στάση</strong>) is a fast, private Android app for Athens public transport—live
+          arrivals that count down between updates, optional <strong>arrival alerts</strong>, route maps with timetables,
+          and nearby stops. No ads, accounts, or clutter. Greek-first UI with instant English/Greek switching.
+        </span>
+        <span class="i18n-el">
+          Η <strong>Στάση</strong> (<strong>Stasi</strong>) είναι μια γρήγορη, ιδιωτική εφαρμογή Android για τα μέσα της Αθήνας—ζωντανές
+          αφίξεις με αντίστροφη μέτρηση μεταξύ ενημερώσεων, προαιρετικές <strong>ειδοποιήσεις άφιξης</strong>, χάρτες δρομολογίων με δρομολόγια
+          και κοντινές στάσεις. Χωρίς διαφημίσεις, λογαριασμούς ή περιττά στοιχεία. Ελληνικό περιβάλλον με άμεση εναλλαγή Αγγλικά/Ελληνικά.
+        </span>
       </p>
       <div class="actions">
-        <a class="btn btn-primary" href="https://github.com/ntufar/stasi">View on GitHub</a>
-        <a class="btn btn-secondary" href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">Read the spec</a>
+        <a class="btn btn-primary" href="https://github.com/ntufar/stasi">
+          <span class="i18n-en">View on GitHub</span>
+          <span class="i18n-el">Δείτε στο GitHub</span>
+        </a>
+        <a class="btn btn-secondary" href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">
+          <span class="i18n-en">Read the spec</span>
+          <span class="i18n-el">Διαβάστε τις προδιαγραφές</span>
+        </a>
       </div>
     </div>
   </header>
@@ -309,55 +395,106 @@
   <main>
     <div class="wrap">
       <section aria-labelledby="features-heading">
-        <h2 id="features-heading">Built for daily riders</h2>
+        <h2 id="features-heading">
+          <span class="i18n-en">Built for daily riders</span>
+          <span class="i18n-el">Για καθημερινούς επιβάτες</span>
+        </h2>
         <div class="grid">
           <article class="card">
-            <h3>Live arrivals</h3>
-            <p>Favorites and recent stops on Home; big minutes, line ID, and direction. Minutes tick down on the clock between OASA polls so the board never looks frozen.</p>
+            <h3>
+              <span class="i18n-en">Live arrivals</span>
+              <span class="i18n-el">Ζωντανές αφίξεις</span>
+            </h3>
+            <p>
+              <span class="i18n-en">Favorites and recent stops on Home; big minutes, line ID, and direction. Minutes tick down on the clock between OASA polls so the board never looks frozen.</span>
+              <span class="i18n-el">Αγαπημένες και πρόσφατες στάσεις στην αρχική· μεγάλα λεπτά, κωδικός γραμμής και κατεύθυνση. Τα λεπτά μετάνε αντίστροφα μεταξύ ενημερώσεων OASA ώστε ο πίνακας να μην φαίνεται «παγωμένος».</span>
+            </p>
           </article>
           <article class="card">
-            <h3>Arrival alerts</h3>
-            <p>Tap the bell on a live row to get a <strong>local</strong> notification when your bus is within your chosen minutes—countdown, arrived, then left. Optional quiet hours; no push server.</p>
+            <h3>
+              <span class="i18n-en">Arrival alerts</span>
+              <span class="i18n-el">Ειδοποιήσεις άφιξης</span>
+            </h3>
+            <p>
+              <span class="i18n-en">Tap the bell on a live row to get a <strong>local</strong> notification when your bus is within your chosen minutes—countdown, arrived, then left. Optional quiet hours; no push server.</span>
+              <span class="i18n-el">Πατήστε το κουδούνι σε μια ζωντανή γραμμή για <strong>τοπική</strong> ειδοποίηση όταν το λεωφορείο είναι μέσα στα λεπτά που ορίζετε—αντίστροφη μέτρηση, άφιξη, μετά αναχώρηση. Προαιρετικές ώρες ησυχίας· χωρίς διακομιστή push.</span>
+            </p>
           </article>
           <article class="card">
-            <h3>Search that understands Greek</h3>
-            <p>Fuzzy match ignores accents; Greeklish like “syntagma” maps to Greek. Stop catalog syncs in the background so search is not limited to routes you have already opened.</p>
+            <h3>
+              <span class="i18n-en">Search that understands Greek</span>
+              <span class="i18n-el">Αναζήτηση που καταλαβαίνει τα Ελληνικά</span>
+            </h3>
+            <p>
+              <span class="i18n-en">Fuzzy match ignores accents; Greeklish like “syntagma” maps to Greek. Stop catalog syncs in the background so search is not limited to routes you have already opened.</span>
+              <span class="i18n-el">Η ασαφής αντιστοίχιση αγνοεί τόνους· το Greeklish όπως «syntagma» αντιστοιχεί σε Ελληνικά. Ο κατάλογος στάσεων συγχρονίζεται στο παρασκήνιο ώστε η αναζήτηση να μην περιορίζεται σε δρομολόγια που έχετε ήδη ανοίξει.</span>
+            </p>
           </article>
           <article class="card">
-            <h3>Route map &amp; timetable</h3>
-            <p>All stops on the line with direction, live buses (heading shown), tap a stop for arrivals. <strong>Map</strong> / <strong>Timetable</strong> tabs with daily origin and terminus columns.</p>
+            <h3>
+              <span class="i18n-en">Route map &amp; timetable</span>
+              <span class="i18n-el">Χάρτης δρομολογίου &amp; δρομολόγια</span>
+            </h3>
+            <p>
+              <span class="i18n-en">All stops on the line with direction, live buses (heading shown), tap a stop for arrivals. <strong>Map</strong> / <strong>Timetable</strong> tabs with daily origin and terminus columns.</span>
+              <span class="i18n-el">Όλες οι στάσεις της γραμμής με κατεύθυνση, ζωντανά λεωφορεία (με προσανατολισμό), πατήστε μια στάση για αφίξεις. Καρτέλες <strong>Χάρτης</strong> / <strong>Δρομολόγια</strong> με ημερήσιες στήλες αφετηρίας και τέρματος.</span>
+            </p>
           </article>
           <article class="card">
-            <h3>Mid-route context</h3>
-            <p>Not at the terminus? See when the next bus leaves from the route origin. <strong>Last service</strong> warning when the day’s final window is ending soon.</p>
+            <h3>
+              <span class="i18n-en">Mid-route context</span>
+              <span class="i18n-el">Πληροφορίες στη μέση της διαδρομής</span>
+            </h3>
+            <p>
+              <span class="i18n-en">Not at the terminus? See when the next bus leaves from the route origin. <strong>Last service</strong> warning when the day’s final window is ending soon.</span>
+              <span class="i18n-el">Δεν είστε στο τέρμα; Δείτε πότε φεύγει το επόμενο λεωφορείο από την αφετηρία. Προειδοποίηση <strong>τελευταίου δρομολογίου</strong> όταν κλείνει σύντομα το τελευταίο παράθυρο της ημέρας.</span>
+            </p>
           </article>
           <article class="card">
-            <h3>Fast &amp; offline-friendly</h3>
-            <p>Progressive load: cached snapshot first, then fresh data. Smart in-memory caching cuts duplicate API calls; pull-to-refresh on arrivals. Nearby stops by GPS; MapLibre, no proprietary keys.</p>
+            <h3>
+              <span class="i18n-en">Fast &amp; offline-friendly</span>
+              <span class="i18n-el">Γρήγορη &amp; φιλική προς offline</span>
+            </h3>
+            <p>
+              <span class="i18n-en">Progressive load: cached snapshot first, then fresh data. Smart in-memory caching cuts duplicate API calls; pull-to-refresh on arrivals. Nearby stops by GPS; MapLibre, no proprietary keys.</span>
+              <span class="i18n-el">Προοδευτική φόρτωση: πρώτα αποθηκευμένο στιγμιότυπο, μετά φρέσκα δεδομένα. Έξυπνη cache στη μνήμη μειώνει διπλές κλήσεις API· pull-to-refresh στις αφίξεις. Κοντινές στάσεις με GPS· MapLibre, χωρίς ιδιόκλητα κλειδιά.</span>
+            </p>
           </article>
         </div>
       </section>
 
       <section aria-labelledby="stack-heading">
-        <h2 id="stack-heading">Tech stack</h2>
+        <h2 id="stack-heading">
+          <span class="i18n-en">Tech stack</span>
+          <span class="i18n-el">Τεχνολογίες</span>
+        </h2>
         <div class="card">
           <ul class="list">
-            <li>Kotlin, Jetpack Compose, Material 3 · MVVM &amp; repository pattern</li>
-            <li>Retrofit, Room, DataStore · WorkManager (arrival alerts) · MapLibre SDK</li>
-            <li>Data from OASA Telematics API (POST endpoints); per-endpoint rate limits and layered caching</li>
+            <li class="i18n-en">Kotlin, Jetpack Compose, Material 3 · MVVM &amp; repository pattern</li>
+            <li class="i18n-el">Kotlin, Jetpack Compose, Material 3 · MVVM &amp; repository pattern</li>
+            <li class="i18n-en">Retrofit, Room, DataStore · WorkManager (arrival alerts) · MapLibre SDK</li>
+            <li class="i18n-el">Retrofit, Room, DataStore · WorkManager (ειδοποιήσεις άφιξης) · MapLibre SDK</li>
+            <li class="i18n-en">Data from OASA Telematics API (POST endpoints); per-endpoint rate limits and layered caching</li>
+            <li class="i18n-el">Δεδομένα από το OASA Telematics API (POST endpoints)· όρια ρυθμού ανά endpoint και πολυεπίπεδη cache</li>
           </ul>
           <p class="spec-link">
-            Details and acceptance criteria are in the
-            <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">project specification</a>.
+            <span class="i18n-en">Details and acceptance criteria are in the
+            <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">project specification</a>.</span>
+            <span class="i18n-el">Λεπτομέρειες και κριτήρια αποδοχής βρίσκονται στις
+            <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">προδιαγραφές του έργου</a>.</span>
           </p>
         </div>
       </section>
 
       <section aria-labelledby="privacy-heading">
-        <h2 id="privacy-heading">Privacy</h2>
+        <h2 id="privacy-heading">
+          <span class="i18n-en">Privacy</span>
+          <span class="i18n-el">Απόρρητο</span>
+        </h2>
         <div class="card">
           <p style="margin:0;color:var(--muted);font-size:0.95rem;">
-            No analytics or crash reporting. Location is used for nearby stops and your position on the map when permitted; it is not stored. Arrival alerts run entirely on-device (WorkManager polling + local notifications)—no accounts, no push server (see the <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">spec</a>).
+            <span class="i18n-en">No analytics or crash reporting. Location is used for nearby stops and your position on the map when permitted; it is not stored. Arrival alerts run entirely on-device (WorkManager polling + local notifications)—no accounts, no push server (see the <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">spec</a>).</span>
+            <span class="i18n-el">Χωρίς analytics ή αναφορές σφαλμάτων. Η τοποθεσία χρησιμοποιείται για κοντινές στάσεις και τη θέση σας στον χάρτη όταν επιτρέπεται· δεν αποθηκεύεται. Οι ειδοποιήσεις άφιξης τρέχουν εξ ολοκλήρου στη συσκευή (WorkManager + τοπικές ειδοποιήσεις)—χωρίς λογαριασμούς, χωρίς διακομιστή push (δείτε τις <a href="https://github.com/ntufar/stasi/blob/master/docs/SPEC.md">προδιαγραφές</a>).</span>
           </p>
         </div>
       </section>
@@ -366,11 +503,77 @@
 
   <footer>
     <div class="wrap">
-      <p>
-        © Stasi contributors ·
-        <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a>
-      </p>
+      <p>© Stasi contributors · <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a></p>
     </div>
   </footer>
+
+  <script>
+    (function () {
+      var META = {
+        en: {
+          title: "Stasi — Athens bus arrivals, fast & private",
+          description: "Open-source Android app for Athens public transport: live arrivals, arrival alerts, route maps and timetables, nearby stops. No ads or accounts.",
+          ogTitle: "Stasi — Athens bus app",
+          ogDescription: "Fast, private Android app for Athens buses: live ETAs, local arrival alerts, route maps, and Greek-aware search.",
+          iconAlt: "Stasi app icon: map pin with bus and live arrival beacon"
+        },
+        el: {
+          title: "Στάση — Αφίξεις λεωφορείων Αθήνας, γρήγορα & ιδιωτικά",
+          description: "Εφαρμογή Android ανοιχτού κώδικα για τα μέσα της Αθήνας: ζωντανές αφίξεις, ειδοποιήσεις άφιξης, χάρτες δρομολογίων και δρομολόγια, κοντινές στάσεις. Χωρίς διαφημίσεις ή λογαριασμούς.",
+          ogTitle: "Στάση — Εφαρμογή λεωφορείων Αθήνας",
+          ogDescription: "Γρήγορη, ιδιωτική εφαρμογή Android για λεωφορεία Αθήνας: ζωντανά ETAs, τοπικές ειδοποιήσεις άφιξης, χάρτες δρομολογίων και αναζήτηση φιλική στα Ελληνικά.",
+          iconAlt: "Εικονίδιο εφαρμογής Στάση: καρφίτσα χάρτη με λεωφορείο και ζωντανή ένδειξη άφιξης"
+        }
+      };
+
+      var langSwitch = document.getElementById("lang-switch");
+      var appIcon = document.getElementById("app-icon");
+
+      function currentLang() {
+        return document.documentElement.lang === "el" ? "el" : "en";
+      }
+
+      function applyMeta(lang) {
+        var m = META[lang];
+        document.title = m.title;
+        var desc = document.querySelector('meta[name="description"]');
+        if (desc) desc.setAttribute("content", m.description);
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.setAttribute("content", m.ogTitle);
+        var ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogDesc) ogDesc.setAttribute("content", m.ogDescription);
+        if (appIcon) appIcon.alt = m.iconAlt;
+      }
+
+      function syncButtons(lang) {
+        langSwitch.querySelectorAll("button[data-lang]").forEach(function (btn) {
+          var active = btn.getAttribute("data-lang") === lang;
+          btn.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        langSwitch.setAttribute(
+          "aria-label",
+          lang === "el" ? "Γλώσσα" : "Language"
+        );
+      }
+
+      function setLang(lang) {
+        if (lang !== "en" && lang !== "el") return;
+        document.documentElement.lang = lang;
+        localStorage.setItem("stasi-site-lang", lang);
+        applyMeta(lang);
+        syncButtons(lang);
+      }
+
+      langSwitch.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-lang]");
+        if (!btn) return;
+        setLang(btn.getAttribute("data-lang"));
+      });
+
+      var initial = currentLang();
+      applyMeta(initial);
+      syncButtons(initial);
+    })();
+  </script>
 </body>
 </html>

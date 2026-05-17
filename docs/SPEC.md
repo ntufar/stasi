@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.40 | Date: 2026-05-16 | Author: Nicolai Tufar
+Version: 0.41 | Date: 2026-05-17 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -11,7 +11,7 @@ Goal: open app → see your bus in under 1 second.
 - Tourists with limited data
 - Users frustrated by slow official app
 
-Primary language: Greek UI by default; user may switch **English** or **Greek** in the app menu (persisted). Changing language **updates all visible UI immediately** (including the current screen), without requiring navigation away or process restart. **`StasiApplication.onCreate`** and **`MainActivity.onCreate`** both call **`AppLocale.apply`** from DataStore so background work (e.g. arrival-alert notifications) sees the same locale as Compose. Compose uses a `ContextWrapper` around the activity that overrides `getResources()` with `withAppLocaleTag` so `stringResource` tracks the chosen locale without replacing `LocalContext` with a non-activity context; `MainActivity` also supplies `LocalActivityResultRegistryOwner` for activity-result APIs (e.g. permission launcher on Home). Default resource fallback language for missing keys is English (`values/`). **Launcher / app label:** English `Stasi` (`values/`); Greek **Στάση** (`values-el/`).
+Primary language: Greek UI by default; user may switch **English** or **Greek** in the app menu (persisted). **GitHub Pages site** (`docs/index.html`): full **English** and **Greek** copy with an **EN / ΕΛ** toggle; choice is stored in `localStorage` (`stasi-site-lang`), defaulting to Greek when the browser locale is Greek, otherwise English. Changing language **updates all visible UI immediately** (including the current screen), without requiring navigation away or process restart. **`StasiApplication.onCreate`** and **`MainActivity.onCreate`** both call **`AppLocale.apply`** from DataStore so background work (e.g. arrival-alert notifications) sees the same locale as Compose. Compose uses a `ContextWrapper` around the activity that overrides `getResources()` with `withAppLocaleTag` so `stringResource` tracks the chosen locale without replacing `LocalContext` with a non-activity context; `MainActivity` also supplies `LocalActivityResultRegistryOwner` for activity-result APIs (e.g. permission launcher on Home). Default resource fallback language for missing keys is English (`values/`). **Launcher / app label:** English `Stasi` (`values/`); Greek **Στάση** (`values-el/`).
 
 ## 3. Core Features (MVP)
 1. Home screen with favorite stops, showing next 2 arrivals per stop live
