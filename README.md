@@ -1,5 +1,13 @@
 # Stasi
 
+[![Android CI](https://github.com/ntufar/stasi/actions/workflows/android-ci.yml/badge.svg)](https://github.com/ntufar/stasi/actions/workflows/android-ci.yml)
+[![License: MIT](https://img.shields.io/github/license/ntufar/stasi)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/ntufar/stasi?display_name=tag)](https://github.com/ntufar/stasi/releases)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.24-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
+[![targetSdk](https://img.shields.io/badge/targetSdk-34-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
+[![Website](https://img.shields.io/badge/website-ntufar.github.io%2Fstasi-blue)](https://ntufar.github.io/stasi/)
+
 **Stasi** is a fast, privacy-minded Android app for **Athens public transport**. It talks to the official OASA Telematics API to show live arrivals, nearby stops, and route maps—without ads, sign-in, or extra clutter.
 
 **Website:** [ntufar.github.io/stasi](https://ntufar.github.io/stasi/) (landing page for the project)
