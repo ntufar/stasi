@@ -5,7 +5,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/ntufar/stasi?display_name=tag)](https://github.com/ntufar/stasi/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.24-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
-[![targetSdk](https://img.shields.io/badge/targetSdk-34-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
+[![targetSdk](https://img.shields.io/badge/targetSdk-35-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
 [![Website](https://img.shields.io/badge/website-ntufar.github.io%2Fstasi-blue)](https://ntufar.github.io/stasi/)
 
 **Stasi** is a fast, privacy-minded Android app for **Athens public transport**. It talks to the official OASA Telematics API to show live arrivals, nearby stops, and route maps—without ads, sign-in, or extra clutter.
@@ -17,7 +17,7 @@
 | | |
 | --- | --- |
 | **Package** | `io.github.ntufar.stasi` |
-| **Min / target SDK** | 26 / 34 |
+| **Min / target SDK** | 26 / 35 |
 | **Current version** | See `app/build.gradle.kts` (`versionName` / `versionCode`) and [CHANGELOG.md](CHANGELOG.md) |
 
 ---
@@ -56,7 +56,7 @@ Detailed API contracts, rate limits, and architecture notes live in [docs/SPEC.m
 - **JDK 17** (Temurin matches CI). If your shell’s default `java` is newer (e.g. JDK 26), Gradle can fail with a cryptic message—**pin 17** before running `./gradlew`:
   - **macOS:** `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`
   - **Linux / Windows:** set `JAVA_HOME` to your JDK 17 install.
-- **Android SDK** with API **34** platform / build-tools (Android Studio provides this)
+- **Android SDK** with API **35** platform / build-tools (Android Studio provides this)
 - A device or emulator running **API 26+**
 
 Cursor agents follow the same rule in **`.cursor/rules/jdk-17-gradle.mdc`**.

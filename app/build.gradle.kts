@@ -17,14 +17,14 @@ val stasiAbiArm64Only = project.hasProperty("stasiAbiArm64Only")
 
 android {
     namespace = "io.github.ntufar.stasi"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "io.github.ntufar.stasi"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 2
-        versionName = "0.0.2"
+        targetSdk = 35
+        versionCode = 3
+        versionName = "0.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         if (stasiAbiArm64Only) {
             ndk {
@@ -50,6 +50,8 @@ android {
             // Phones only — drops x86/x86_64 emulator libs (~half the native weight vs universal).
             ndk {
                 abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+                // Packaged into the AAB for Play crash/ANR deobfuscation (MapLibre ships native .so).
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
             isMinifyEnabled = true
             isShrinkResources = true

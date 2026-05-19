@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.42 | Date: 2026-05-19 | Author: Nicolai Tufar
+Version: 0.43 | Date: 2026-05-19 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -65,7 +65,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 - Background: **WorkManager** for arrival alert polling (`ArrivalAlertWorker`)
 - Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`); **`ProvideAppLocaleCompositionLocals`** in `MainActivity` supplies `LocalContext` as a `ContextWrapper` (activity base, localized `Resources`) plus matching `LocalConfiguration`; **`LocalActivityResultRegistryOwner`** is provided from `MainActivity` so `rememberLauncherForActivityResult` keeps working.
 - Maps: MapLibre SDK (open source, no API key)
-- Min SDK 26, Target SDK 34
+- Min SDK 26, Target SDK 35
 
 ## 6. Data Sources
 Base URL: http://telematics.oasa.gr/api/
