@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<!--
+  GitHub Pages: same /docs folder as index.html
+  Public URL: https://ntufar.github.io/stasi/privacy.html
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (function () {
+      var stored = localStorage.getItem("stasi-site-lang");
+      var lang = stored === "en" || stored === "el"
+        ? stored
+        : ((navigator.language || "").toLowerCase().indexOf("el") === 0 ? "el" : "en");
+      document.documentElement.lang = lang;
+    })();
+  </script>
+  <title>Privacy Policy — Stasi</title>
+  <meta name="description" content="Privacy policy for the Stasi Android app: Athens public transport, on-device data, OASA API, location, and local notifications.">
+  <link rel="icon" href="favicon.png?v=2" type="image/png" sizes="192x192">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07080c;
+      --surface: #11131a;
+      --border: #1e2230;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #4fc3f7;
+      --accent-dim: rgba(79, 195, 247, 0.12);
+      --radius: 14px;
+      --max: 720px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html[lang="en"] .i18n-el,
+    html[lang="el"] .i18n-en {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .noise {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    header, main, footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    .wrap {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 1.25rem;
+    }
+
+    header {
+      padding: 2rem 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .lang-switch {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .lang-switch button {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.45rem 0.75rem;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .lang-switch button[aria-pressed="true"] {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .back {
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .back:hover { color: var(--accent); }
+
+    h1 {
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin: 0 0 0.5rem;
+    }
+
+    .effective {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    main {
+      padding: 2rem 0 3rem;
+    }
+
+    .prose {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.6rem;
+    }
+
+    .prose h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 2rem 0 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .prose h2:first-child {
+      margin-top: 0;
+    }
+
+    .prose p {
+      margin: 0 0 1rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .prose ul {
+      margin: 0 0 1rem;
+      padding-left: 1.25rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .prose li { margin-bottom: 0.4rem; }
+
+    .prose a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(79, 195, 247, 0.35);
+    }
+
+    .prose a:hover {
+      border-bottom-color: var(--accent);
+    }
+
+    .prose strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    footer {
+      padding: 1.5rem 0 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header>
+    <div class="wrap">
+      <div class="header-top">
+        <a class="back" href="index.html">
+          <span class="i18n-en">← Back to Stasi</span>
+          <span class="i18n-el">← Επιστροφή στη Στάση</span>
+        </a>
+        <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
+        </div>
+      </div>
+      <h1>
+        <span class="i18n-en">Privacy Policy</span>
+        <span class="i18n-el">Πολιτική Απορρήτου</span>
+      </h1>
+      <p class="effective">
+        <span class="i18n-en">Effective date: 19 May 2026 · App package: <code>io.github.ntufar.stasi</code></span>
+        <span class="i18n-el">Ημερομηνία ισχύος: 19 Μαΐου 2026 · Πακέτο εφαρμογής: <code>io.github.ntufar.stasi</code></span>
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <article class="prose">
+
+        <h2 class="i18n-en">1. Who we are</h2>
+        <h2 class="i18n-el">1. Ποιοι είμαστε</h2>
+        <p class="i18n-en">
+          <strong>Stasi</strong> (“we”, “the app”) is an open-source Android application for Athens public transport,
+          published by its contributors. This policy describes how the app handles information when you use it.
+          The app does <strong>not</strong> require an account or sign-in.
+        </p>
+        <p class="i18n-el">
+          Η <strong>Stasi</strong> («εμείς», «η εφαρμογή») είναι μια εφαρμογή Android ανοιχτού κώδικα για τα μέσα της Αθήνας,
+          που δημοσιεύεται από τους συνεισφέροντες του έργου. Η παρούσα πολιτική περιγράφει πώς η εφαρμογή χειρίζεται
+          πληροφορίες όταν τη χρησιμοποιείτε. Η εφαρμογή <strong>δεν</strong> απαιτεί λογαριασμό ή σύνδεση.
+        </p>
+
+        <h2 class="i18n-en">2. Summary</h2>
+        <h2 class="i18n-el">2. Σύνοψη</h2>
+        <ul class="i18n-en">
+          <li>No ads, no analytics SDKs, and no crash-reporting services in the current app.</li>
+          <li>We do not sell your personal data.</li>
+          <li>Most data stays <strong>on your device</strong> (favorites, settings, cache, arrival alerts).</li>
+          <li><strong>Location</strong> is used only when you allow it—for nearby stops and your position on the map. We do not store a location history.</li>
+          <li>The app contacts <strong>OASA Telematics</strong> for live transit data and <strong>map tile providers</strong> when you open the map.</li>
+          <li><strong>Arrival alerts</strong> are local notifications scheduled on your phone; there is no remote push server.</li>
+        </ul>
+        <ul class="i18n-el">
+          <li>Χωρίς διαφημίσεις, χωρίς SDK analytics και χωρίς υπηρεσίες αναφοράς σφαλμάτων στην τρέχουσα έκδοση.</li>
+          <li>Δεν πουλάμε τα προσωπικά σας δεδομένα.</li>
+          <li>Τα περισσότερα δεδομένα μένουν <strong>στη συσκευή σας</strong> (αγαπημένα, ρυθμίσεις, cache, ειδοποιήσεις άφιξης).</li>
+          <li>Η <strong>τοποθεσία</strong> χρησιμοποιείται μόνο όταν την επιτρέπετε—για κοντινές στάσεις και τη θέση σας στον χάρτη. Δεν αποθηκεύουμε ιστορικό τοποθεσίας.</li>
+          <li>Η εφαρμογή επικοινωνεί με την <strong>τηλεματική ΟΑΣΑ</strong> για ζωντανά δεδομένα και με <strong>παρόχους πλακιδίων χάρτη</strong> όταν ανοίγετε τον χάρτη.</li>
+          <li>Οι <strong>ειδοποιήσεις άφιξης</strong> είναι τοπικές στη συσκευή· δεν υπάρχει διακομιστής push.</li>
+        </ul>
+
+        <h2 class="i18n-en">3. Data stored on your device</h2>
+        <h2 class="i18n-el">3. Δεδομένα που αποθηκεύονται στη συσκευή</h2>
+        <p class="i18n-en">The app may store the following locally (Android Room, DataStore, and app preferences):</p>
+        <p class="i18n-el">Η εφαρμογή μπορεί να αποθηκεύει τοπικά τα εξής (Room, DataStore, προτιμήσεις):</p>
+        <ul class="i18n-en">
+          <li><strong>Favorite stops</strong> (stop codes, optional aliases, order).</li>
+          <li><strong>Settings</strong>: UI language (English/Greek), arrival-alert lead time, quiet hours.</li>
+          <li><strong>Recent activity</strong>: last viewed stop or route (shortcuts on Home).</li>
+          <li><strong>Active arrival alerts</strong>: identifiers for the stop, route, and vehicle you chose for a reminder.</li>
+          <li><strong>Cached transit catalog and responses</strong> (lines, stops, arrivals, timetables) to load faster and work better with poor connectivity. Cache entries expire on a schedule (for example, lines/stops up to about 24 hours; arrivals use a short freshness window).</li>
+        </ul>
+        <ul class="i18n-el">
+          <li><strong>Αγαπημένες στάσεις</strong> (κωδικοί, προαιρετικά ψευδώνυμα, σειρά).</li>
+          <li><strong>Ρυθμίσεις</strong>: γλώσσα UI, χρόνος ειδοποίησης άφιξης, ώρες ησυχίας.</li>
+          <li><strong>Πρόσφατη δραστηριότητα</strong>: τελευταία στάση ή δρομολόγιο (συντομεύσεις στην αρχική).</li>
+          <li><strong>Ενεργές ειδοποιήσεις άφιξης</strong>: αναγνωριστικά στάσης, δρομολογίου και οχήματος.</li>
+          <li><strong>Cache δεδομένων μετακίνησης</strong> για ταχύτερη φόρτωση· με χρονικά όρια λήξης (π.χ. γραμμές/στάσεις έως ~24 ώρες, αφίξεις με σύντομο παράθυρο φρεσκάδας).</li>
+        </ul>
+        <p class="i18n-en">
+          If you uninstall the app or clear its storage, this on-device data is removed unless Android backup
+          restores it (see section 8).
+        </p>
+        <p class="i18n-el">
+          Αν απεγκαταστήσετε την εφαρμογή ή διαγράψετε τα δεδομένα της, αυτά τα τοπικά δεδομένα διαγράφονται,
+          εκτός αν το backup του Android τα επαναφέρει (βλ. ενότητα 8).
+        </p>
+
+        <h2 class="i18n-en">4. Location</h2>
+        <h2 class="i18n-el">4. Τοποθεσία</h2>
+        <p class="i18n-en">
+          With your permission, the app uses coarse or fine location (via Google Play services location APIs on your device)
+          to show <strong>nearby stops</strong> and <strong>your position on the route map</strong>.
+          Location is read when those features need it; we do <strong>not</strong> maintain a trail of past GPS fixes on a server
+          or in long-term storage for tracking purposes.
+        </p>
+        <p class="i18n-el">
+          Με την άδειά σας, η εφαρμογή χρησιμοποιεί χονδρική ή ακριβή τοποθεσία (μέσω Google Play services στη συσκευή)
+          για <strong>κοντινές στάσεις</strong> και <strong>τη θέση σας στον χάρτη</strong>.
+          Δεν τηρούμε <strong>ιστορικό</strong> τοποθεσιών σε διακομιστή ή για παρακολούθηση.
+        </p>
+
+        <h2 class="i18n-en">5. Network requests and third parties</h2>
+        <h2 class="i18n-el">5. Δικτυακές κλήσεις και τρίτα μέρη</h2>
+        <p class="i18n-en">When you use features that need fresh data or maps, your device sends requests to:</p>
+        <p class="i18n-el">Όταν χρησιμοποιείτε λειτουργίες που χρειάζονται δεδομένα ή χάρτη, η συσκευή στέλνει αιτήματα σε:</p>
+        <ul class="i18n-en">
+          <li>
+            <strong>OASA Telematics</strong> (<code>http://telematics.oasa.gr/api/</code>) — official Athens transit API
+            for lines, stops, live arrivals, bus positions, and timetables. Requests use HTTP (cleartext) as required by that API.
+            Your IP address and request parameters (e.g. stop or route codes) are visible to OASA’s infrastructure.
+          </li>
+          <li>
+            <strong>Map basemap</strong> — vector map style and tiles from CARTO
+            (<code>basemaps.cartocdn.com</code>) when you view a route map. Your IP address may be logged by that provider.
+          </li>
+          <li>
+            <strong>Google Play services</strong> — used on-device for location; governed by
+            <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google’s privacy policy</a>.
+          </li>
+        </ul>
+        <ul class="i18n-el">
+          <li>
+            <strong>Τηλεματική ΟΑΣΑ</strong> (<code>http://telematics.oasa.gr/api/</code>) — επίσημο API για γραμμές, στάσεις,
+            ζωντανές αφίξεις, θέσεις λεωφορείων και δρομολόγια. Οι κλήσεις γίνονται με HTTP. Η IP και οι παράμετροι
+            (π.χ. κωδικοί στάσεων) είναι ορατές στην υποδομή της ΟΑΣΑ.
+          </li>
+          <li>
+            <strong>Χάρτης</strong> — στυλ και πλακίδια από την CARTO (<code>basemaps.cartocdn.com</code>) όταν βλέπετε χάρτη δρομολογίου.
+          </li>
+          <li>
+            <strong>Google Play services</strong> — για τοποθεσία στη συσκευή· ισχύει η
+            <a href="https://policies.google.com/privacy" rel="noopener noreferrer">πολιτική απορρήτου της Google</a>.
+          </li>
+        </ul>
+        <p class="i18n-en">
+          We do not operate our own backend that receives your personal profile. Transit data accuracy and availability
+          depend on OASA and third-party services; we are not affiliated with OASA.
+        </p>
+        <p class="i18n-el">
+          Δεν λειτουργούμε δικό μας backend που συλλέγει προφίλ χρήστη. Η ακρίβεια των δεδομένων εξαρτάται από την ΟΑΣΑ
+          και τρίτους· δεν συνδεόμαστε με την ΟΑΣΑ.
+        </p>
+
+        <h2 class="i18n-en">6. Notifications</h2>
+        <h2 class="i18n-el">6. Ειδοποιήσεις</h2>
+        <p class="i18n-en">
+          If you enable an <strong>arrival alert</strong> on a live bus row, the app schedules background work on your device
+          to poll OASA for that vehicle and show a <strong>local notification</strong> when your chosen threshold is reached.
+          On Android 13+, you must grant the notification permission. Alerts can respect <strong>quiet hours</strong> you set in Settings.
+          Notification content (stop name, line, minutes) is composed on the device. No marketing or remote push campaigns are sent.
+        </p>
+        <p class="i18n-el">
+          Αν ενεργοποιήσετε <strong>ειδοποίηση άφιξης</strong>, η εφαρμογή προγραμματίζει εργασία στο παρασκήνιο για polling στην ΟΑΣΑ
+          και <strong>τοπική ειδοποίηση</strong> όταν φτάσετε στο όριο λεπτών που ορίσατε.
+          Σε Android 13+ απαιτείται άδεια ειδοποιήσεων. Ισχύουν προαιρετικές <strong>ώρες ησυχίας</strong>.
+          Δεν αποστέλλονται διαφημιστικά ή remote push.
+        </p>
+
+        <h2 class="i18n-en">7. What we do not collect</h2>
+        <h2 class="i18n-el">7. Τι δεν συλλέγουμε</h2>
+        <ul class="i18n-en">
+          <li>No account, email, or phone number inside the app.</li>
+          <li>No in-app advertising identifiers.</li>
+          <li>No Firebase Analytics, Crashlytics, or similar telemetry in the current release.</li>
+          <li>No selling or renting of user data to data brokers.</li>
+        </ul>
+        <ul class="i18n-el">
+          <li>Χωρίς λογαριασμό, email ή τηλέφωνο μέσα στην εφαρμογή.</li>
+          <li>Χωρίς διαφημιστικά αναγνωριστικά.</li>
+          <li>Χωρίς Firebase Analytics, Crashlytics ή παρόμοια τηλεμετρία στην τρέχουσα έκδοση.</li>
+          <li>Χωρίς πώληση δεδομένων σε brokers.</li>
+        </ul>
+
+        <h2 class="i18n-en">8. Backup and security</h2>
+        <h2 class="i18n-el">8. Αντίγραφα ασφαλείας και ασφάλεια</h2>
+        <p class="i18n-en">
+          The app manifest allows Android’s automatic backup (<code>android:allowBackup="true"</code>).
+          Depending on your device and Google account settings, favorites and preferences may be included in encrypted device backups.
+          Keep your device updated and use a screen lock. Source code is public at
+          <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a> for review.
+        </p>
+        <p class="i18n-el">
+          Το manifest επιτρέπει αυτόματο backup του Android (<code>android:allowBackup="true"</code>).
+          Ανάλογα με τη συσκευή και τον λογαριασμό Google, αγαπημένα και προτιμήσεις μπορεί να συμπεριληφθούν σε κρυπτογραφημένα backups.
+          Ο κώδικας είναι δημόσιος στο
+          <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a>.
+        </p>
+
+        <h2 class="i18n-en">9. Children</h2>
+        <h2 class="i18n-el">9. Παιδιά</h2>
+        <p class="i18n-en">
+          The app is a general transit utility and is not directed at children under 13. We do not knowingly collect
+          personal information from children through a dedicated registration flow (there is no registration).
+        </p>
+        <p class="i18n-el">
+          Η εφαρμογή απευθύνεται στο ευρύ κοινό και όχι ειδικά σε παιδιά κάτω των 13 ετών. Δεν συλλέγουμε εν γνώσει
+          προσωπικά δεδομένα παιδιών μέσω εγγραφής (δεν υπάρχει εγγραφή).
+        </p>
+
+        <h2 class="i18n-en">10. Changes to this policy</h2>
+        <h2 class="i18n-el">10. Αλλαγές στην πολιτική</h2>
+        <p class="i18n-en">
+          We may update this page when the app changes. The effective date at the top will be revised.
+          Continued use after changes means you accept the updated policy.
+        </p>
+        <p class="i18n-el">
+          Μπορούμε να ενημερώνουμε αυτή τη σελίδα όταν αλλάζει η εφαρμογή. Η ημερομηνία ισχύος θα αναθεωρείται.
+          Η συνέχιση χρήσης μετά από αλλαγές σημαίνει αποδοχή της ενημερωμένης πολιτικής.
+        </p>
+
+        <h2 class="i18n-en">11. Contact</h2>
+        <h2 class="i18n-el">11. Επικοινωνία</h2>
+        <p class="i18n-en">
+          Questions or requests about privacy: open an issue on
+          <a href="https://github.com/ntufar/stasi/issues">GitHub</a> or contact the maintainer through that repository.
+        </p>
+        <p class="i18n-el">
+          Ερωτήσεις για το απόρρητο: ανοίξτε issue στο
+          <a href="https://github.com/ntufar/stasi/issues">GitHub</a> ή επικοινωνήστε με τον συντηρητή μέσω του αποθετηρίου.
+        </p>
+
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>
+        <span class="i18n-en">© Stasi contributors · <a href="index.html">Home</a> · <a href="https://github.com/ntufar/stasi">GitHub</a></span>
+        <span class="i18n-el">© Συνεισφέροντες Stasi · <a href="index.html">Αρχική</a> · <a href="https://github.com/ntufar/stasi">GitHub</a></span>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var META = {
+        en: { title: "Privacy Policy — Stasi" },
+        el: { title: "Πολιτική Απορρήτου — Στάση" }
+      };
+
+      var langSwitch = document.getElementById("lang-switch");
+
+      function currentLang() {
+        return document.documentElement.lang === "el" ? "el" : "en";
+      }
+
+      function applyMeta(lang) {
+        document.title = META[lang].title;
+      }
+
+      function syncButtons(lang) {
+        langSwitch.querySelectorAll("button[data-lang]").forEach(function (btn) {
+          btn.setAttribute("aria-pressed", btn.getAttribute("data-lang") === lang ? "true" : "false");
+        });
+        langSwitch.setAttribute("aria-label", lang === "el" ? "Γλώσσα" : "Language");
+      }
+
+      function setLang(lang) {
+        if (lang !== "en" && lang !== "el") return;
+        document.documentElement.lang = lang;
+        localStorage.setItem("stasi-site-lang", lang);
+        applyMeta(lang);
+        syncButtons(lang);
+      }
+
+      langSwitch.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-lang]");
+        if (!btn) return;
+        setLang(btn.getAttribute("data-lang"));
+      });
+
+      var initial = currentLang();
+      applyMeta(initial);
+      syncButtons(initial);
+    })();
+  </script>
+</body>
+</html>
