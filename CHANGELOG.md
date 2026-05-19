@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.0.4] - 2026-05-19
+
+### Changed
+
+- Release build sets native `debugSymbolLevel` to `SYMBOL_TABLE` for Play crash/ANR symbol metadata.
+
 ## [0.0.3] - 2026-05-19
 
 ### Changed
