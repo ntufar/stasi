@@ -318,6 +318,35 @@
       border-bottom-color: var(--accent);
     }
 
+    .screenshots {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      align-items: start;
+    }
+
+    .screenshot {
+      margin: 0;
+    }
+
+    .screenshot img {
+      display: block;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      height: auto;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .screenshot figcaption {
+      margin-top: 0.65rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
     footer {
       padding: 2rem 1.25rem;
       border-top: 1px solid var(--border);
@@ -394,6 +423,29 @@
 
   <main>
     <div class="wrap">
+      <section aria-labelledby="screenshots-heading">
+        <h2 id="screenshots-heading">
+          <span class="i18n-en">Screenshots</span>
+          <span class="i18n-el">Στιγμιότυπα</span>
+        </h2>
+        <div class="screenshots">
+          <figure class="screenshot">
+            <img src="screenshots/arrivals.png" width="1080" height="2400" loading="lazy" alt="">
+            <figcaption>
+              <span class="i18n-en">Live arrivals with countdown minutes and optional arrival alerts</span>
+              <span class="i18n-el">Ζωντανές αφίξεις με αντίστροφη μέτρηση και προαιρετικές ειδοποιήσεις</span>
+            </figcaption>
+          </figure>
+          <figure class="screenshot">
+            <img src="screenshots/route-map.png" width="1080" height="2400" loading="lazy" alt="">
+            <figcaption>
+              <span class="i18n-en">Route map with stops, direction, and live vehicle positions</span>
+              <span class="i18n-el">Χάρτης δρομολογίου με στάσεις, κατεύθυνση και ζωντανά λεωφορεία</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section aria-labelledby="features-heading">
         <h2 id="features-heading">
           <span class="i18n-en">Built for daily riders</span>

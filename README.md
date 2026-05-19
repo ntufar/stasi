@@ -14,6 +14,12 @@
 
 **Goal:** open the app and see your next bus in under a second.
 
+## Screenshots
+
+| Live arrivals at a stop | Route map with live vehicles |
+| --- | --- |
+| ![Live arrivals with countdown minutes and arrival alert](docs/screenshots/arrivals.png) | ![Line route map with stops and vehicle positions](docs/screenshots/route-map.png) |
+
 | | |
 | --- | --- |
 | **Package** | `io.github.ntufar.stasi` |
