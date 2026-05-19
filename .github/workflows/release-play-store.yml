@@ -1,21 +1,19 @@
-# Builds a signed Android App Bundle for Play Console and, on tag push (v*),
-# creates a GitHub Release with the release APK attached (notes from CHANGELOG.md).
+# Builds a signed Android App Bundle for Play Console.
 #
-# Release APK is arm64-v8a + armeabi-v7a only (no x86 emulator libs), minified + shrunk resources.
-# Play installs use the AAB; Google serves device-specific splits, so download size is typically
-# smaller than the standalone universal APK artifact.
+# On push of tags v*:
+#   - Validates tag matches app/build.gradle.kts versionName
+#   - Builds signed AAB + APK, creates GitHub Release
+#   - Uploads AAB to Google Play (track chosen from semver vs previous tag):
+#       patch-only (0.0.4 → 0.0.5) → beta
+#       minor/major (0.0.4 → 0.1.0) → production
 #
-# Required repo secrets for a signed bundle:
-#   RELEASE_KEYSTORE_BASE64 — base64 of your upload keystore file
-#   KEYSTORE_STORE_PASSWORD
-#   KEYSTORE_KEY_ALIAS
-#   KEYSTORE_KEY_PASSWORD
+# workflow_dispatch: build artifacts; optional manual Play upload (pick track).
 #
-# Optional — upload to Play (workflow_dispatch with publish=true):
-#   PLAY_SERVICE_ACCOUNT_JSON — full JSON of a Play Developer API service account key
+# Required repo secrets:
+#   RELEASE_KEYSTORE_BASE64, KEYSTORE_STORE_PASSWORD, KEYSTORE_KEY_ALIAS, KEYSTORE_KEY_PASSWORD
+#   PLAY_SERVICE_ACCOUNT_JSON (required for tag-push Play upload)
 #
-# One-time Play Console: create app with package name io.github.ntufar.stasi (or change
-# applicationId in app/build.gradle.kts first — changing later requires a new listing).
+# Play Console: package io.github.ntufar.stasi; invite service account under Users and permissions.
 
 name: Release (Play bundle)
 
@@ -23,9 +21,9 @@ on:
   workflow_dispatch:
     inputs:
       track:
-        description: "Play track (if publishing)"
+        description: "Play track (manual publish only)"
         required: true
-        default: internal
+        default: beta
         type: choice
         options:
           - internal
@@ -33,7 +31,7 @@ on:
           - beta
           - production
       publish:
-        description: "Upload AAB to Play Console (needs PLAY_SERVICE_ACCOUNT_JSON)"
+        description: "Upload AAB to Play Console"
         required: false
         default: false
         type: boolean
@@ -56,6 +54,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v3
@@ -70,8 +70,19 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
+      - name: Make scripts and Gradle wrapper executable
+        run: |
+          chmod +x ./gradlew
+          chmod +x ./.github/scripts/*.sh
+
+      - name: Validate versionName matches tag
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: ./.github/scripts/validate-release-version.sh "${{ github.ref_name }}"
+
+      - name: Resolve Play track from tag
+        id: play_track
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: ./.github/scripts/resolve-play-track.sh "${{ github.ref_name }}"
 
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest --stacktrace --warning-mode all
@@ -116,7 +127,7 @@ jobs:
 
       - name: Prepare GitHub Release (notes + named APK)
         id: github_release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           awk -v ver="$VERSION" '
@@ -133,18 +144,45 @@ jobs:
           echo "apk=stasi-${VERSION}.apk" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release with APK
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.github_release.outputs.apk }}
           body_path: release_notes.md
 
+      - name: Ensure Play credentials for tag release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$PLAY_JSON" ]; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is required for automatic Play upload on tag push."
+            exit 1
+          fi
+
+      - name: Prepare Play whatsnew from CHANGELOG
+        if: |
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(grep -E '^\s*versionName\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+          fi
+          ./.github/scripts/prepare-whatsnew.sh "$VERSION"
+
       - name: Upload to Google Play
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true'
+        if: |
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: io.github.ntufar.stasi
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
-          track: ${{ github.event.inputs.track }}
+          tracks: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.track || steps.play_track.outputs.track }}
+          releaseName: ${{ github.event_name == 'push' && github.ref_name || format('manual-{0}', github.run_id) }}
           status: completed
+          whatsNewDirectory: distribution/whatsnew
+          mappingFile: app/build/outputs/mapping/release/mapping.txt

@@ -117,10 +117,18 @@ Download: **Actions → latest “Android CI” run → Artifacts → `stasi-deb
 
 Triggered by:
 
-- **`workflow_dispatch`** — build signed **AAB** (+ APK); optional upload to Play when **Publish** is enabled.
-- **Push of tags `v*`** — same build, plus a **GitHub Release** with **`stasi-<version>.apk`** and release notes sliced from [CHANGELOG.md](CHANGELOG.md) for that version.
+- **Push of tags `v*`** — build signed **AAB** (+ APK), create a **GitHub Release** (`stasi-<version>.apk` + [CHANGELOG.md](CHANGELOG.md) notes), and **upload the AAB to Google Play** automatically.
+- **`workflow_dispatch`** — same build; optional manual Play upload (pick track).
 
-**Repository secrets** (signed artifacts):
+**Play track routing** (tag push only; compares the new tag to the previous `v*.*.*` tag):
+
+| Version change | Example | Play track |
+| --- | --- | --- |
+| Patch only | `v0.0.4` → `v0.0.5` | **beta** |
+| Minor or major | `v0.0.4` → `v0.1.0`, `v0.1.0` → `v1.0.0` | **production** |
+| First semver tag | `v0.0.1` | **beta** |
+
+**Repository secrets**:
 
 | Secret | Purpose |
 | --- | --- |
@@ -128,16 +136,23 @@ Triggered by:
 | `KEYSTORE_STORE_PASSWORD` | Keystore password |
 | `KEYSTORE_KEY_ALIAS` | Key alias |
 | `KEYSTORE_KEY_PASSWORD` | Key password |
-| `PLAY_SERVICE_ACCOUNT_JSON` | *(Optional)* Play Developer API service account JSON for automated upload |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Play Developer API service account JSON (**required** for tag releases) |
 
-Play Console app must use package **`io.github.ntufar.stasi`** (or change `applicationId` before your first production upload).
+**One-time Play Console setup:** invite the service account under **Users and permissions** with permission to release to **beta** and **production**. Enable [Google Play Android Developer API](https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com). Package name must be **`io.github.ntufar.stasi`**.
 
 ---
 
 ## Changelog & versioning
 
 - Human-readable history: [CHANGELOG.md](CHANGELOG.md) ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style).
-- Tag releases as **`vMAJOR.MINOR.PATCH`** (e.g. `v0.0.1`) to match the GitHub Release automation.
+- Tag releases as **`vMAJOR.MINOR.PATCH`** (e.g. `v0.0.4`). The tag must match **`versionName`** in `app/build.gradle.kts`; bump **`versionCode`** for every Play upload.
+
+**Release checklist:**
+
+1. Update [CHANGELOG.md](CHANGELOG.md) (`## [x.y.z] - date`).
+2. Set `versionName` and increment `versionCode` in `app/build.gradle.kts`.
+3. Commit, push, tag: `git tag v0.0.5 && git push origin v0.0.5`
+4. **Actions → Release (Play bundle)** runs: GitHub Release + Play upload to **beta** (patch) or **production** (minor/major).
 
 ---
 
