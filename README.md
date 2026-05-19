@@ -143,7 +143,8 @@ Play Console app must use package **`io.github.ntufar.stasi`** (or change `appli
 
 ## Data & privacy
 
-- Network data comes from **OASA Telematics** (`http://telematics.oasa.gr/api/`). The app uses **cleartext HTTP** for that endpoint (see manifest / network security configuration).
+- **Privacy policy (web):** [ntufar.github.io/stasi/privacy.html](https://ntufar.github.io/stasi/privacy.html) — use this URL in Google Play Console.
+- Network data comes from **OASA Telematics** (`http://telematics.oasa.gr/api/`). The app uses **cleartext HTTP** for that endpoint (see manifest).
 - **Location** is used for nearby stops and for **your position on the route map** when you allow it; the MVP spec does not persist location history.
 - **No analytics / crash reporting** in the MVP spec—verify current code before claiming compliance in store listings.
 

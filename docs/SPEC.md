@@ -1,5 +1,5 @@
 # Stasi – Athens Bus App Specification
-Version: 0.41 | Date: 2026-05-17 | Author: Nicolai Tufar
+Version: 0.42 | Date: 2026-05-19 | Author: Nicolai Tufar
 
 ## 1. Purpose
 Stasi is a fast, private Android app for Athens public transport. It replaces the official OASA Telematics app by showing real-time arrivals, nearby stops, and route maps without ads, accounts, or clutter.
@@ -152,6 +152,7 @@ Design rules:
 - Location used only for nearby, not stored
 - Arrival alerts: no third-party push; only user-initiated local notifications and on-device stored alert keys
 - User-Agent: "Stasi/1.0 (+https://github.com/you/stasi)"
+- **Public privacy policy:** `docs/privacy.html` on GitHub Pages at `https://ntufar.github.io/stasi/privacy.html` (EN/EL, same language toggle as the landing page). Linked from `docs/index.html` footer and Privacy section.
 
 ## 13. Acceptance Criteria
 - User opens app, sees favorite stop with correct minutes within 1s
