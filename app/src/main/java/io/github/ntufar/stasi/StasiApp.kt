@@ -66,6 +66,9 @@ fun StasiApp(initialStopCode: String? = null) {
             endMinutes = SettingsRepository.DEFAULT_QUIET_HOURS_END_MINUTES,
         ),
     )
+    val showMapStopNames by container.settingsRepository.showMapStopNames.collectAsStateWithLifecycle(
+        initialValue = SettingsRepository.DEFAULT_SHOW_MAP_STOP_NAMES,
+    )
 
     LaunchedEffect(localeTag) {
         Log.d(LOCALE_LOG_TAG, "StasiApp: compose localeTag=$localeTag")
@@ -164,6 +167,7 @@ fun StasiApp(initialStopCode: String? = null) {
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
                 )
                 var thresholdMenuExpanded by remember { mutableStateOf(false) }
+                var mapStopNamesMenuExpanded by remember { mutableStateOf(false) }
                 var quietHoursEnabledMenuExpanded by remember { mutableStateOf(false) }
                 var quietStartMenuExpanded by remember { mutableStateOf(false) }
                 var quietEndMenuExpanded by remember { mutableStateOf(false) }
@@ -201,6 +205,49 @@ fun StasiApp(initialStopCode: String? = null) {
                             )
                         }
                     }
+                }
+                Text(
+                    stringResource(R.string.settings_map_stop_names_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                )
+                TextButton(
+                    onClick = { mapStopNamesMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (showMapStopNames) {
+                            stringResource(R.string.settings_map_stop_names_on)
+                        } else {
+                            stringResource(R.string.settings_map_stop_names_off)
+                        },
+                    )
+                }
+                DropdownMenu(
+                    expanded = mapStopNamesMenuExpanded,
+                    onDismissRequest = { mapStopNamesMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_map_stop_names_on)) },
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.setShowMapStopNames(true)
+                                mapStopNamesMenuExpanded = false
+                            }
+                            Unit
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.settings_map_stop_names_off)) },
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.setShowMapStopNames(false)
+                                mapStopNamesMenuExpanded = false
+                            }
+                            Unit
+                        },
+                    )
                 }
                 Text(
                     stringResource(R.string.settings_quiet_hours_heading),

@@ -18,6 +18,7 @@ private val ARRIVAL_ALERT_THRESHOLD_MINUTES = intPreferencesKey("arrival_alert_t
 private val QUIET_HOURS_ENABLED = booleanPreferencesKey("quiet_hours_enabled")
 private val QUIET_HOURS_START_MINUTES = intPreferencesKey("quiet_hours_start_minutes")
 private val QUIET_HOURS_END_MINUTES = intPreferencesKey("quiet_hours_end_minutes")
+private val SHOW_MAP_STOP_NAMES = booleanPreferencesKey("show_map_stop_names")
 
 data class QuietHoursSettings(
     val enabled: Boolean,
@@ -44,6 +45,11 @@ class SettingsRepository(
             .coerceIn(ARRIVAL_ALERT_THRESHOLD_MIN, ARRIVAL_ALERT_THRESHOLD_MAX)
     }
 
+    /** When true, route map markers show OASA stop names below pins (default [DEFAULT_SHOW_MAP_STOP_NAMES]). */
+    val showMapStopNames: Flow<Boolean> = store.data.map { prefs ->
+        prefs[SHOW_MAP_STOP_NAMES] ?: DEFAULT_SHOW_MAP_STOP_NAMES
+    }
+
     val quietHours: Flow<QuietHoursSettings> = store.data.map { prefs ->
         QuietHoursSettings(
             enabled = prefs[QUIET_HOURS_ENABLED] ?: false,
@@ -66,6 +72,10 @@ class SettingsRepository(
         store.edit { it[ARRIVAL_ALERT_THRESHOLD_MINUTES] = v }
     }
 
+    suspend fun setShowMapStopNames(show: Boolean) {
+        store.edit { it[SHOW_MAP_STOP_NAMES] = show }
+    }
+
     suspend fun setQuietHoursEnabled(enabled: Boolean) {
         store.edit { it[QUIET_HOURS_ENABLED] = enabled }
     }
@@ -85,6 +95,7 @@ class SettingsRepository(
         const val DEFAULT_ARRIVAL_ALERT_THRESHOLD_MINUTES = 5
         const val ARRIVAL_ALERT_THRESHOLD_MIN = 1
         const val ARRIVAL_ALERT_THRESHOLD_MAX = 30
+        const val DEFAULT_SHOW_MAP_STOP_NAMES = true
         const val DEFAULT_QUIET_HOURS_START_MINUTES = 23 * 60
         const val DEFAULT_QUIET_HOURS_END_MINUTES = 7 * 60
 

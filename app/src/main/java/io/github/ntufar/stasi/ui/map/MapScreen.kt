@@ -86,6 +86,7 @@ import io.github.ntufar.stasi.data.repository.BusOnRoute
 import io.github.ntufar.stasi.data.repository.RouteDailyTimetable
 import io.github.ntufar.stasi.data.repository.RouteDailyTimetableRow
 import io.github.ntufar.stasi.data.repository.RouteStop
+import io.github.ntufar.stasi.data.repository.SettingsRepository
 import io.github.ntufar.stasi.di.LocalAppContainer
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -107,6 +108,7 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -134,6 +136,9 @@ private const val PROP_BEARING = "bearing"
 private const val BUS_ICON_ID = "bus-heading-icon"
 private const val USER_LOCATION_SOURCE_ID = "user-location-source"
 private const val USER_LOCATION_LAYER_ID = "user-location-dot"
+
+/** Middle route stops show names at or above this map zoom; start/end/nearby always. */
+private const val ROUTE_MID_STOP_NAME_MIN_ZOOM = 14.0
 
 private fun hasAnyLocationPermission(context: android.content.Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -175,6 +180,9 @@ fun MapScreen(
         },
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val showMapStopNames by container.settingsRepository.showMapStopNames.collectAsStateWithLifecycle(
+        initialValue = SettingsRepository.DEFAULT_SHOW_MAP_STOP_NAMES,
+    )
     var userLatLng by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var recenterSignal by remember { mutableIntStateOf(0) }
     val fused = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -375,6 +383,7 @@ fun MapScreen(
                         stops = mapStops,
                         buses = uiState.buses,
                         nearbyMarkersOnly = nearbyMarkersOnly,
+                        showStopNames = showMapStopNames,
                         userLatLng = userLatLng,
                         recenterSignal = recenterSignal,
                         onBusVehicleSelected = vm::selectVehicle,
@@ -652,6 +661,7 @@ private fun StasiMapLibre(
     buses: List<BusOnRoute>,
     /** True when [stops] are closest-stop pins, not an OASA route sequence (uniform markers). */
     nearbyMarkersOnly: Boolean,
+    showStopNames: Boolean,
     userLatLng: Pair<Double, Double>?,
     recenterSignal: Int,
     onBusVehicleSelected: (String) -> Unit,
@@ -754,6 +764,16 @@ private fun StasiMapLibre(
         )
         stopsSource?.setGeoJson(stopsFeatureCollection(stops, nearbyMarkersOnly = nearbyMarkersOnly))
         busSource?.setGeoJson(busFeatureCollection(buses, stops))
+    }
+
+    LaunchedEffect(styleLoaded, showStopNames) {
+        if (!styleLoaded) return@LaunchedEffect
+        val style = styleRef ?: return@LaunchedEffect
+        style.getLayer(STOPS_NAME_LAYER_ID)?.setProperties(
+            PropertyFactory.visibility(
+                if (showStopNames) Property.VISIBLE else Property.NONE,
+            ),
+        )
     }
 
     LaunchedEffect(styleLoaded, userLatLng) {
@@ -902,21 +922,36 @@ private fun ensureStopLayers(style: Style) {
         style.addLayer(
             SymbolLayer(STOPS_NAME_LAYER_ID, STOPS_SOURCE_ID).withProperties(
                 PropertyFactory.textField(Expression.get(PROP_STOP_NAME)),
-                PropertyFactory.textSize(11f),
+                PropertyFactory.textSize(10f),
                 PropertyFactory.textColor(Color.rgb(33, 33, 33)),
                 PropertyFactory.textHaloColor(Color.WHITE),
-                PropertyFactory.textHaloWidth(2f),
+                PropertyFactory.textHaloWidth(2.5f),
                 PropertyFactory.textAnchor(Expression.literal("top")),
-                PropertyFactory.textOffset(arrayOf(0f, 1.35f)),
-                PropertyFactory.textMaxWidth(14f),
-                PropertyFactory.textAllowOverlap(true),
-                PropertyFactory.textIgnorePlacement(true),
-            ).withFilter(
-                Expression.eq(Expression.get(PROP_KIND), Expression.literal("nearby")),
-            ),
+                PropertyFactory.textOffset(arrayOf(0f, 1.9f)),
+                PropertyFactory.textMaxWidth(8f),
+                PropertyFactory.textLineHeight(1.15f),
+                PropertyFactory.textPadding(2f),
+                PropertyFactory.textAllowOverlap(false),
+                PropertyFactory.textIgnorePlacement(false),
+                PropertyFactory.textOptional(true),
+            ).withFilter(stopNameLayerFilter()),
         )
     }
 }
+
+/** Names on all stops when zoomed in; at route overview only first/last (and nearby pins). */
+private fun stopNameLayerFilter(): Expression = Expression.all(
+    Expression.has(PROP_STOP_NAME),
+    Expression.any(
+        Expression.eq(Expression.get(PROP_KIND), Expression.literal("nearby")),
+        Expression.eq(Expression.get(PROP_KIND), Expression.literal("start")),
+        Expression.eq(Expression.get(PROP_KIND), Expression.literal("end")),
+        Expression.all(
+            Expression.eq(Expression.get(PROP_KIND), Expression.literal("mid")),
+            Expression.gte(Expression.zoom(), Expression.literal(ROUTE_MID_STOP_NAME_MIN_ZOOM)),
+        ),
+    ),
+)
 
 private fun ensureBusLayers(style: Style) {
     if (style.getSourceAs<GeoJsonSource>(BUSES_SOURCE_ID) == null) {
@@ -999,21 +1034,13 @@ private fun stopsFeatureCollection(
         props.add(PROP_STOP_CODE, JsonPrimitive(s.stopCode))
         props.add(PROP_SEQ, JsonPrimitive((index + 1).toString()))
         props.add(PROP_KIND, JsonPrimitive(kind))
-        if (nearbyMarkersOnly) {
-            props.add(
-                PROP_STOP_NAME,
-                JsonPrimitive(truncateStopMapLabel(s.description.ifBlank { s.stopCode })),
-            )
-        }
+        props.add(
+            PROP_STOP_NAME,
+            JsonPrimitive(truncateStopMapLabel(s.description.ifBlank { s.stopCode })),
+        )
         Feature.fromGeometry(Point.fromLngLat(s.lng, s.lat), props)
     }
     return FeatureCollection.fromFeatures(features.toTypedArray())
-}
-
-private fun truncateStopMapLabel(raw: String, maxChars: Int = 28): String {
-    val t = raw.trim()
-    if (t.length <= maxChars) return t
-    return t.take(maxChars - 1).trimEnd() + "…"
 }
 
 private fun busFeatureCollection(buses: List<BusOnRoute>, stops: List<RouteStop>): FeatureCollection {
