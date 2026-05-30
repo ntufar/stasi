@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.2.1] - 2026-05-30
+
+### Changed
+
+- Moved `enableEdgeToEdge()` before `super.onCreate()` per Android 15 best practice.
+- Updated `appcompat` from 1.7.0 to 1.7.1 (latest stable).
+
+### Removed
+
+- Removed deprecated status bar and navigation bar color calls (previously used internally by appcompat).
+
 ## [0.1.0] - 2026-05-30
 
 ### Added
