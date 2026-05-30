@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import io.github.ntufar.stasi.R
+import io.github.ntufar.stasi.ui.ClockText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -123,6 +124,7 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    ClockText(modifier = Modifier.padding(end = 8.dp))
                     IconButton(onClick = onOpenMenu, modifier = Modifier.testTag("btn_menu")) {
                         Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }

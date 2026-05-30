@@ -72,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.ntufar.stasi.R
+import io.github.ntufar.stasi.ui.ClockText
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -292,6 +293,7 @@ fun MapScreen(
                     }
                 },
                 actions = {
+                    ClockText(modifier = Modifier.padding(end = 8.dp))
                     IconButton(onClick = onOpenMenu) {
                         Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.cd_menu))
                     }

@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import io.github.ntufar.stasi.R
+import io.github.ntufar.stasi.ui.ClockText
 import io.github.ntufar.stasi.data.util.effectiveMinutesSinceSnapshot
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -249,6 +250,7 @@ fun ArrivalsScreen(
                     }
                 },
                 actions = {
+                    ClockText(modifier = Modifier.padding(end = 8.dp))
                     Box {
                         IconButton(onClick = { actionsMenuExpanded = true }) {
                             Icon(
