@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.1.0] - 2026-05-30
+
+### Added
+
+- **Stop name labels on the route map** — Optional toggle (default on) persisted in Settings. Endpoint labels shown at overview zoom; middle-stop names appear when zoomed in with collision avoidance.
+- **Current time in the top bar** — A `ClockText` composable shows the live time (`HH:mm`) in the actions area of every screen's `TopAppBar`.
+
+### Changed
+
+- README and index.html now include a screenshots section showcasing live arrivals and the route map.
+
 ## [0.0.4] - 2026-05-19
 
 ### Changed
