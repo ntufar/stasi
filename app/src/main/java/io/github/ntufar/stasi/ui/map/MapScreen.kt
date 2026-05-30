@@ -119,7 +119,7 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 
 /** OSM-based vector style with roads and labels (demotiles URL is a sparse preview and often looks “empty”). */
-private const val STYLE_URI = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+internal const val STYLE_URI = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 private const val ROUTE_SOURCE_ID = "route-source"
 private const val ROUTE_LINE_LAYER_ID = "route-line"
 private const val STOPS_SOURCE_ID = "stops-source"

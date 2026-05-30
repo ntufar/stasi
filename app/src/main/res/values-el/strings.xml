@@ -32,6 +32,16 @@
     <string name="settings_quiet_hours_end_value">Λήξη: %1$02d:00</string>
     <string name="settings_hour_value">%1$02d:00</string>
 
+    <string name="settings_offline_map_heading">Χάρτης εκτός σύνδεσης</string>
+    <string name="settings_offline_map_download">Λήψη χάρτη Αθήνας για χρήση εκτός σύνδεσης</string>
+    <string name="settings_offline_map_downloading">Λήψη… %1$d%%</string>
+    <string name="settings_offline_map_available">Διαθέσιμος χάρτης Αθήνας εκτός σύνδεσης</string>
+    <string name="settings_offline_map_delete">Διαγραφή χάρτη εκτός σύνδεσης</string>
+
+    <string name="settings_theme_heading">Θέμα</string>
+    <string name="settings_theme_dark">Σκοτεινό</string>
+    <string name="settings_theme_light">Φωτεινό</string>
+
     <string name="language_heading">Γλώσσα</string>
     <string name="language_english">Αγγλικά</string>
     <string name="language_greek">Ελληνικά</string>

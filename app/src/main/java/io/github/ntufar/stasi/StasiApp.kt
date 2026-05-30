@@ -45,6 +45,7 @@ import io.github.ntufar.stasi.ui.arrivals.ArrivalsScreen
 import io.github.ntufar.stasi.ui.home.HomeScreen
 import io.github.ntufar.stasi.ui.map.MapScreen
 import io.github.ntufar.stasi.ui.search.SearchScreen
+import io.github.ntufar.stasi.util.OfflineMapState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -68,6 +69,12 @@ fun StasiApp(initialStopCode: String? = null) {
     )
     val showMapStopNames by container.settingsRepository.showMapStopNames.collectAsStateWithLifecycle(
         initialValue = SettingsRepository.DEFAULT_SHOW_MAP_STOP_NAMES,
+    )
+    val darkTheme by container.settingsRepository.darkMode.collectAsStateWithLifecycle(
+        initialValue = SettingsRepository.DEFAULT_DARK_MODE,
+    )
+    val offlineMapState by container.offlineMapManager.state.collectAsStateWithLifecycle(
+        initialValue = OfflineMapState.Unavailable,
     )
 
     LaunchedEffect(localeTag) {
@@ -349,6 +356,83 @@ fun StasiApp(initialStopCode: String? = null) {
                         }
                     }
                 }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    stringResource(R.string.settings_offline_map_heading),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                )
+                when (val os = offlineMapState) {
+                    is OfflineMapState.Downloaded -> {
+                        Text(
+                            stringResource(R.string.settings_offline_map_available),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                        )
+                        TextButton(
+                            onClick = {
+                                scope.launch { container.offlineMapManager.deleteRegion() }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.settings_offline_map_delete))
+                        }
+                    }
+                    is OfflineMapState.Downloading -> {
+                        Text(
+                            stringResource(R.string.settings_offline_map_downloading, (os.progress * 100).toInt()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                        )
+                    }
+                    is OfflineMapState.NotDownloaded -> {
+                        TextButton(
+                            onClick = {
+                                scope.launch { container.offlineMapManager.startDownload() }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.settings_offline_map_download))
+                        }
+                    }
+                    is OfflineMapState.Error -> {
+                        Text(
+                            os.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
+                        )
+                    }
+                    is OfflineMapState.Unavailable -> { /* hide */ }
+                }
+                LaunchedEffect(Unit) {
+                    container.offlineMapManager.refreshStatus()
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    stringResource(R.string.settings_theme_heading),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                )
+                NavigationDrawerItem(
+                    label = {
+                        Text(
+                            if (darkTheme) stringResource(R.string.settings_theme_dark)
+                            else stringResource(R.string.settings_theme_light),
+                        )
+                    },
+                    selected = darkTheme,
+                    onClick = {
+                        scope.launch {
+                            container.settingsRepository.setDarkMode(!darkTheme)
+                        }
+                        Unit
+                    },
+                )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
                     stringResource(R.string.language_heading),

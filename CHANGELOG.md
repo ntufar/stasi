@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.2.2] - 2026-05-30
+
+### Added
+
+- **Light theme** — Toggle between dark (AMOLED black) and light theme in the navigation drawer Settings.
+- **Offline map tiles** — Download the Athens metropolitan area map for offline use (MapLibre OfflineManager, zoom 10–15). Manage via the navigation drawer Settings.
+
 ## [0.2.1] - 2026-05-30
 
 ### Changed

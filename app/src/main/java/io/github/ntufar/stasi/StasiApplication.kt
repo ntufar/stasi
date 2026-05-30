@@ -16,6 +16,7 @@ class StasiApplication : Application() {
         super.onCreate()
         MapLibre.getInstance(this)
         container = AppContainer(this)
+        container.offlineMapManager.init()
         val localeTag = runBlocking { container.settingsRepository.localeTag.first() }
         AppLocale.apply(localeTag)
         NotificationHelper(withAppLocaleTag(localeTag)).createChannel()

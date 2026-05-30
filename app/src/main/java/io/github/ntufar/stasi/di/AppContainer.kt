@@ -8,6 +8,7 @@ import io.github.ntufar.stasi.data.repository.FavoritesRepository
 import io.github.ntufar.stasi.data.repository.OasaRepository
 import io.github.ntufar.stasi.data.repository.RecentActivityRepository
 import io.github.ntufar.stasi.data.repository.SettingsRepository
+import io.github.ntufar.stasi.util.OfflineMapManager
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -18,6 +19,7 @@ class AppContainer(context: Context) {
     val settingsRepository = SettingsRepository(appContext)
     val alertsRepository = AlertsRepository(appContext)
     val oasaRepository: OasaRepository = OasaRepository(dao = database.stasiDao())
+    val offlineMapManager = OfflineMapManager(appContext)
 }
 
 val LocalAppContainer = staticCompositionLocalOf<AppContainer> {

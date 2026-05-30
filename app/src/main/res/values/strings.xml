@@ -32,6 +32,16 @@
     <string name="settings_quiet_hours_end_value">End: %1$02d:00</string>
     <string name="settings_hour_value">%1$02d:00</string>
 
+    <string name="settings_offline_map_heading">Offline Map</string>
+    <string name="settings_offline_map_download">Download Athens map for offline use</string>
+    <string name="settings_offline_map_downloading">Downloading… %1$d%%</string>
+    <string name="settings_offline_map_available">Offline Athens map available</string>
+    <string name="settings_offline_map_delete">Delete offline map</string>
+
+    <string name="settings_theme_heading">Theme</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_light">Light</string>
+
     <string name="language_heading">Language</string>
     <string name="language_english">English</string>
     <string name="language_greek">Greek</string>

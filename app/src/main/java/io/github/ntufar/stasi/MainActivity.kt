@@ -41,8 +41,11 @@ class MainActivity : ComponentActivity() {
                     val localeTag by container.settingsRepository.localeTag.collectAsStateWithLifecycle(
                         initialValue = SettingsRepository.LANGUAGE_EL,
                     )
+                    val darkTheme by container.settingsRepository.darkMode.collectAsStateWithLifecycle(
+                        initialValue = SettingsRepository.DEFAULT_DARK_MODE,
+                    )
                     ProvideAppLocaleCompositionLocals(localeTag) {
-                        StasiTheme {
+                        StasiTheme(darkTheme = darkTheme) {
                             Surface(modifier = Modifier.fillMaxSize()) {
                                 StasiApp(initialStopCode = pendingStopCode)
                             }
