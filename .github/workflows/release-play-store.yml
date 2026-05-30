@@ -38,6 +38,8 @@ on:
   push:
     tags:
       - "v*"
+    paths-ignore:
+      - "docs/**"
 
 permissions:
   contents: write
