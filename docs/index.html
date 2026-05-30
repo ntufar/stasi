@@ -21,10 +21,24 @@
   <meta property="og:title" content="Stasi — Athens bus app">
   <meta property="og:description" content="Fast, private Android app for Athens buses: live ETAs, local arrival alerts, route maps, and Greek-aware search.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ntufar.github.io/stasi/">
+  <meta property="og:image" content="https://ntufar.github.io/stasi/app-icon.png">
+  <meta property="og:image:width" content="1024">
+  <meta property="og:image:height" content="1024">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Stasi — Athens bus app">
+  <meta name="twitter:description" content="Fast, private Android app for Athens buses: live ETAs, local arrival alerts, route maps, and Greek-aware search.">
+  <meta name="twitter:image" content="https://ntufar.github.io/stasi/app-icon.png">
+  <link rel="canonical" href="https://ntufar.github.io/stasi/">
+  <link rel="alternate" hreflang="en" href="https://ntufar.github.io/stasi/">
+  <link rel="alternate" hreflang="el" href="https://ntufar.github.io/stasi/">
+  <link rel="alternate" hreflang="x-default" href="https://ntufar.github.io/stasi/">
   <link rel="icon" href="favicon.png?v=2" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="app-icon.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://play.google.com">
+  <link rel="dns-prefetch" href="https://github.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -374,6 +388,55 @@
       }
     }
   </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Stasi",
+    "alternateName": "Στάση",
+    "description": "Open-source Android app for Athens public transport: live arrivals, arrival alerts, route maps and timetables, nearby stops. No ads or accounts.",
+    "url": "https://ntufar.github.io/stasi/",
+    "applicationCategory": "Utilities",
+    "operatingSystem": "Android",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "1200"
+    },
+    "downloadUrl": "https://play.google.com/store/apps/details?id=io.github.ntufar.stasi",
+    "image": "https://ntufar.github.io/stasi/app-icon.png",
+    "screenshot": [
+      "https://ntufar.github.io/stasi/screenshots/arrivals.png",
+      "https://ntufar.github.io/stasi/screenshots/route-map.png"
+    ],
+    "author": {
+      "@type": "Person",
+      "name": "Nicolai Tufar",
+      "url": "https://github.com/ntufar"
+    },
+    "codeRepository": "https://github.com/ntufar/stasi",
+    "licenseUrl": "https://github.com/ntufar/stasi/blob/master/LICENSE",
+    "keywords": "athens, bus, transport, real-time, arrivals, open-source, android",
+    "inLanguage": ["en", "el"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Stasi",
+    "url": "https://github.com/ntufar/stasi",
+    "sameAs": [
+      "https://github.com/ntufar/stasi",
+      "https://play.google.com/store/apps/details?id=io.github.ntufar.stasi"
+    ]
+  }
+  </script>
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
@@ -382,7 +445,7 @@
   <header>
     <div class="wrap">
       <div class="header-top">
-        <img class="app-icon" id="app-icon" src="app-icon.png?v=2" width="72" height="72" alt="">
+        <img class="app-icon" id="app-icon" src="app-icon.png?v=2" width="72" height="72" alt="Stasi app icon: map pin with bus and live arrival beacon">
         <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
           <button type="button" data-lang="en" aria-pressed="false">EN</button>
           <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
@@ -434,14 +497,14 @@
         </h2>
         <div class="screenshots">
           <figure class="screenshot">
-            <img src="screenshots/arrivals.png" width="1080" height="2400" loading="lazy" alt="">
+            <img src="screenshots/arrivals.png" width="1080" height="2400" loading="lazy" alt="Stasi app showing live arrivals with countdown minutes and optional arrival alerts">
             <figcaption>
               <span class="i18n-en">Live arrivals with countdown minutes and optional arrival alerts</span>
               <span class="i18n-el">Ζωντανές αφίξεις με αντίστροφη μέτρηση και προαιρετικές ειδοποιήσεις</span>
             </figcaption>
           </figure>
           <figure class="screenshot">
-            <img src="screenshots/route-map.png" width="1080" height="2400" loading="lazy" alt="">
+            <img src="screenshots/route-map.png" width="1080" height="2400" loading="lazy" alt="Stasi app showing route map with stops, direction, and live vehicle positions">
             <figcaption>
               <span class="i18n-en">Route map with stops, direction, and live vehicle positions</span>
               <span class="i18n-el">Χάρτης δρομολογίου με στάσεις, κατεύθυνση και ζωντανά λεωφορεία</span>

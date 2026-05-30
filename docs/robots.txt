@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /app/build/
+
+Sitemap: https://ntufar.github.io/stasi/sitemap.xml
