@@ -66,7 +66,7 @@ Primary language: Greek UI by default; user may switch **English** or **Greek** 
 - Background: **WorkManager** for arrival alert polling (`ArrivalAlertWorker`)
 - Per-app locale: AndroidX AppCompat `AppCompatDelegate.setApplicationLocales` (English `en`, Greek `el`); **`ProvideAppLocaleCompositionLocals`** in `MainActivity` supplies `LocalContext` as a `ContextWrapper` (activity base, localized `Resources`) plus matching `LocalConfiguration`; **`LocalActivityResultRegistryOwner`** is provided from `MainActivity` so `rememberLauncherForActivityResult` keeps working.
 - Maps: MapLibre SDK (open source, no API key)
-- Min SDK 26, Target SDK 35
+- Min SDK 26, Target SDK 36
 
 ## 6. Data Sources
 Base URL: http://telematics.oasa.gr/api/

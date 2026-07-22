@@ -17,14 +17,14 @@ val stasiAbiArm64Only = project.hasProperty("stasiAbiArm64Only")
 
 android {
     namespace = "io.github.ntufar.stasi"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "io.github.ntufar.stasi"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 7
-        versionName = "0.2.2"
+        targetSdk = 36
+        versionCode = 8
+        versionName = "0.2.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         if (stasiAbiArm64Only) {
             ndk {

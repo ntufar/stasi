@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.2.3] - 2026-07-22
+
+### Changed
+
+- Updated `compileSdk`/`targetSdk` from 35 to 36 (Android 16) to meet Google Play's target API level requirement.
+
 ## [0.2.2] - 2026-05-30
 
 ### Added
