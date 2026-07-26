@@ -31,8 +31,8 @@ class MainActivity : ComponentActivity() {
             val tag = container.settingsRepository.localeTag.first()
             AppLocale.apply(tag)
         }
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             CompositionLocalProvider(LocalAppContainer provides container) {
                 CompositionLocalProvider(

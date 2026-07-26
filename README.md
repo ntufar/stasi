@@ -3,7 +3,7 @@
 [![Android CI](https://github.com/ntufar/stasi/actions/workflows/android-ci.yml/badge.svg)](https://github.com/ntufar/stasi/actions/workflows/android-ci.yml)
 [![License: MIT](https://img.shields.io/github/license/ntufar/stasi)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/ntufar/stasi?display_name=tag)](https://github.com/ntufar/stasi/releases)
-[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.24-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
 [![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
 [![Website](https://img.shields.io/badge/website-ntufar.github.io%2Fstasi-blue)](https://ntufar.github.io/stasi/)

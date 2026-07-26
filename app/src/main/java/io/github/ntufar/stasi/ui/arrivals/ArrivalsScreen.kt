@@ -50,17 +50,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import android.content.ClipData
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import io.github.ntufar.stasi.R
 import io.github.ntufar.stasi.ui.ClockText
@@ -80,6 +82,7 @@ import io.github.ntufar.stasi.util.freshnessUpdatedLabel
 import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 private const val ARRIVALS_DISPLAY_TICK_MS = 15_000L
 
@@ -184,7 +187,8 @@ fun ArrivalsScreen(
     val pullTranslationY = pullRefreshState.distanceFraction * thresholdPx
     val listRows = buildArrivalListRows(ui.arrivals)
     val mapRouteCode = ui.arrivals.firstOrNull { it.routeCode.isNotBlank() }?.routeCode
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     var displayNowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -323,16 +327,17 @@ fun ArrivalsScreen(
                                 onClick = {
                                     actionsMenuExpanded = false
                                     val stopTitle = ui.title.ifBlank { stopCode }
-                                    clipboard.setText(
-                                        AnnotatedString(
-                                            buildConciseSummaryText(
-                                                context = context,
-                                                stopTitle = stopTitle,
-                                                stopCode = stopCode,
-                                                arrivals = ui.arrivals,
-                                            ),
-                                        ),
+                                    val summaryText = buildConciseSummaryText(
+                                        context = context,
+                                        stopTitle = stopTitle,
+                                        stopCode = stopCode,
+                                        arrivals = ui.arrivals,
                                     )
+                                    scope.launch {
+                                        clipboard.setClipEntry(
+                                            ClipEntry(ClipData.newPlainText("stasi", summaryText)),
+                                        )
+                                    }
                                     Toast.makeText(
                                         context,
                                         context.getString(R.string.arrivals_copied_summary),
@@ -344,7 +349,11 @@ fun ArrivalsScreen(
                                 text = { Text(stringResource(R.string.arrivals_action_copy_link)) },
                                 onClick = {
                                     actionsMenuExpanded = false
-                                    clipboard.setText(AnnotatedString(buildStopDeepLink(stopCode)))
+                                    scope.launch {
+                                        clipboard.setClipEntry(
+                                            ClipEntry(ClipData.newPlainText("stasi", buildStopDeepLink(stopCode))),
+                                        )
+                                    }
                                     Toast.makeText(
                                         context,
                                         context.getString(R.string.arrivals_copied_link),

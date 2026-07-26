@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.2.4] - 2026-07-27
+
+### Changed
+
+- Upgraded build tooling: AGP 8.13.2 → 9.3.0, Gradle 8.13 → 9.6.1, Kotlin 1.9.24 → 2.3.21, KSP → 2.3.10. Kotlin support is now provided by AGP's built-in integration (removed the separate `kotlin-android` plugin) with `org.jetbrains.kotlin.plugin.compose` for the Compose compiler.
+- Bumped `androidx.activity`/`activity-compose` 1.9.3 → 1.12.4 and `androidx.room` 2.6.1 → 2.7.2 (required for KSP 2.3.x compatibility).
+- Enabled R8's optimized resource shrinking (`android.r8.optimizedResourceShrinking=true`), addressing the Play Console app-optimization recommendation.
+- Moved `enableEdgeToEdge()` to after `super.onCreate()` in `MainActivity`, matching the standard AndroidX pattern.
+- Migrated clipboard copy actions in the arrivals screen from the deprecated `LocalClipboardManager` to `LocalClipboard`.
+
 ## [0.2.3] - 2026-07-22
 
 ### Changed

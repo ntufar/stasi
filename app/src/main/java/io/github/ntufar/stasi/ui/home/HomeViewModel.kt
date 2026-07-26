@@ -173,9 +173,9 @@ class HomeViewModel(
         val hasId = info?.lineId?.isNotBlank() == true
         val hasDescr = info?.lineDescr?.isNotBlank() == true
         val title = when {
-            hasId && hasDescr -> "${info!!.lineId} · ${info.lineDescr}"
-            hasId -> info!!.lineId
-            hasDescr -> info!!.lineDescr
+            hasId && hasDescr -> "${info.lineId} · ${info.lineDescr}"
+            hasId -> info.lineId
+            hasDescr -> info.lineDescr
             else -> visit.routeCode
         }
         _uiState.update {

@@ -249,7 +249,7 @@ internal fun buildArrivalListRows(arrivals: List<ArrivalDetail>): List<ArrivalLi
                         routeCode = a.routeCode,
                         lineLabel = a.lineLabel,
                         originStopDescription = a.originStopDescription,
-                        clock = a.originScheduleClock!!.trim(),
+                        clock = a.originScheduleClock.trim(),
                         minutesUntil = a.originDepartureMinutes ?: 999,
                     ),
                 )
@@ -273,7 +273,7 @@ internal fun buildArrivalListRows(arrivals: List<ArrivalDetail>): List<ArrivalLi
                     routeCode = a.routeCode,
                     lineLabel = a.lineLabel,
                     originStopDescription = a.originStopDescription,
-                    clock = a.originScheduleClock!!.trim(),
+                    clock = a.originScheduleClock.trim(),
                     minutesUntil = a.originDepartureMinutes ?: 999,
                 ),
             )
