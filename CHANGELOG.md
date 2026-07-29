@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 <!-- Add changes here; copy into a new `## [x.y.z] - YYYY-MM-DD` section when tagging a release. -->
 
+## [0.2.5] - 2026-07-29
+
+### Fixed
+
+- Pinned AGP to 9.2.1 (was 9.3.0), the latest version supported by the installed Android Studio.
+
 ## [0.2.4] - 2026-07-27
 
 ### Changed
