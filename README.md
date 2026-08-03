@@ -24,7 +24,7 @@
 | | |
 | --- | --- |
 | **Package** | `io.github.ntufar.stasi` |
-| **Min / target SDK** | 26 / 35 |
+| **Min / target SDK** | 26 / 36 |
 | **Current version** | See `app/build.gradle.kts` (`versionName` / `versionCode`) and [CHANGELOG.md](CHANGELOG.md) |
 
 ---
@@ -114,9 +114,10 @@ If `keystore.properties` is missing, Gradle still configures the **debug** build
 
 ### Android CI
 
-On every push (any branch) and on **workflow_dispatch**:
+On every push (any branch, code changes only—doc-only pushes to `docs/**` are skipped) and on **workflow_dispatch**:
 
 - Lint, unit tests, and a **debug APK** artifact (**`stasi-debug-apk`**)—built in a dedicated job so you still get an APK when lint/tests fail but the project compiles. The artifact is **arm64-v8a-only** (smaller download; MapLibre ships large native libs per ABI).
+- After lint/tests pass, **instrumented (Compose) UI tests** run on an API 34 x86_64 emulator.
 
 Download: **Actions → latest “Android CI” run → Artifacts → `stasi-debug-apk`**.
 
@@ -124,16 +125,10 @@ Download: **Actions → latest “Android CI” run → Artifacts → `stasi-deb
 
 Triggered by:
 
-- **Push of tags `v*`** — build signed **AAB** (+ APK), create a **GitHub Release** (`stasi-<version>.apk` + [CHANGELOG.md](CHANGELOG.md) notes), and **upload the AAB to Google Play** automatically.
-- **`workflow_dispatch`** — same build; optional manual Play upload (pick track).
+- **Push of tags `v*`** — build signed **AAB** (+ APK), create a **GitHub Release** (`stasi-<version>.apk` + [CHANGELOG.md](CHANGELOG.md) notes), and **upload the AAB to Google Play's internal testing track** automatically.
+- **`workflow_dispatch`** — same build; optional manual Play upload (pick any track: internal, alpha, beta, production).
 
-**Play track routing** (tag push only; compares the new tag to the previous `v*.*.*` tag):
-
-| Version change | Example | Play track |
-| --- | --- | --- |
-| Patch only | `v0.0.4` → `v0.0.5` | **beta** |
-| Minor or major | `v0.0.4` → `v0.1.0`, `v0.1.0` → `v1.0.0` | **production** |
-| First semver tag | `v0.0.1` | **beta** |
+Tag pushes always publish to **internal testing**—promote to beta/production manually in Play Console (or via a manual `workflow_dispatch` run with the desired track) when ready.
 
 **Repository secrets**:
 
@@ -145,7 +140,7 @@ Triggered by:
 | `KEYSTORE_KEY_PASSWORD` | Key password |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Play Developer API service account JSON (**required** for tag releases) |
 
-**One-time Play Console setup:** invite the service account under **Users and permissions** with permission to release to **beta** and **production**. Enable [Google Play Android Developer API](https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com). Package name must be **`io.github.ntufar.stasi`**.
+**One-time Play Console setup:** invite the service account under **Users and permissions** with permission to release to **internal testing** (plus any other tracks you plan to use via manual dispatch). Enable [Google Play Android Developer API](https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com). Package name must be **`io.github.ntufar.stasi`**.
 
 ---
 
@@ -159,7 +154,7 @@ Triggered by:
 1. Update [CHANGELOG.md](CHANGELOG.md) (`## [x.y.z] - date`).
 2. Set `versionName` and increment `versionCode` in `app/build.gradle.kts`.
 3. Commit, push, tag: `git tag v0.0.5 && git push origin v0.0.5`
-4. **Actions → Release (Play bundle)** runs: GitHub Release + Play upload to **beta** (patch) or **production** (minor/major).
+4. **Actions → Release (Play bundle)** runs: GitHub Release + Play upload to the **internal testing** track. Promote to beta/production from Play Console (or a manual `workflow_dispatch` run) when ready.
 
 ---
 
