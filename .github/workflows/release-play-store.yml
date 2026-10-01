@@ -53,22 +53,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v3
+        uses: gradle/actions/wrapper-validation@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
 
@@ -107,7 +107,7 @@ jobs:
         run: ./gradlew --no-daemon bundleRelease assembleRelease --stacktrace --warning-mode all
 
       - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: stasi-release-aab
           path: app/build/outputs/bundle/release/*.aab
@@ -115,7 +115,7 @@ jobs:
           retention-days: 90
 
       - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: stasi-release-apk
           path: app/build/outputs/apk/release/*.apk
@@ -142,7 +142,7 @@ jobs:
 
       - name: Create GitHub Release with APK
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ steps.github_release.outputs.apk }}
           body_path: release_notes.md
