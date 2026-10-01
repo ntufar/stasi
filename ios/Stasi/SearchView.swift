@@ -1,101 +1,81 @@
 import SwiftUI
 
-// MARK: - Search: stops + lines with Greek fuzzy match (accents ignored, Greeklish).
+// MARK: - Search (port of SearchScreen / SearchViewModel): lines + stops from
+// the persisted catalog with Greek accent-insensitive + Greeklish matching.
+// Opening Search warms the lines catalog and starts the 24h incremental sync
+// that fills the stop index.
 
 struct SearchView: View {
-    @EnvironmentObject var catalog: CatalogCache
-    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var catalog: CatalogStore
     @State private var query = ""
-    @State private var stopResults: [(code: String, name: String)] = []
-    @State private var searching = false
-    @State private var stopCache: [(code: String, name: String, norm: String)] = []
+    @State private var lineHits: [BusLine] = []
+    @State private var stopHits: [(code: String, name: String)] = []
 
     var body: some View {
-        NavigationStack {
-            List {
-                let lineHits = catalog.lines.filter {
-                    matchesGreekQuery(
-                        haystackNorm: lineSearchNorm(
-                            lineId: $0.lineId, lineCode: $0.lineCode, descr: $0.lineDescr),
-                        query: query)
-                }.prefix(20)
-                if !lineHits.isEmpty {
-                    Section(String(localized: "search_lines")) {
-                        ForEach(Array(lineHits), id: \.lineCode) { line in
-                            NavigationLink {
-                                RouteMapView(preloadedLineQuery: line.lineId)
-                            } label: {
-                                VStack(alignment: .leading) {
-                                    Text(line.lineId).bold()
-                                    Text(line.lineDescr).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                            }
-                        }
-                    }
+        List {
+            switch catalog.linesState {
+            case .loading:
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text(L("search_loading_catalog")).font(.caption).foregroundStyle(.secondary)
                 }
-                Section(String(localized: "search_stops")) {
-                    if searching { ProgressView() }
-                    ForEach(stopResults.prefix(30), id: \.code) { s in
-                        NavigationLink(s.name) {
-                            ArrivalsView(stopCode: s.code, stopName: s.name, routeHint: nil)
+            case .unavailable:
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L("search_catalog_unavailable")).font(.caption).foregroundStyle(.red)
+                    Button(L("retry")) { Task { await startCatalog() } }
+                }
+            case .ready:
+                EmptyView()
+            }
+            if !lineHits.isEmpty {
+                Section(L("lines_heading")) {
+                    ForEach(lineHits) { line in
+                        NavigationLink(value: AppRoute.lineMap(lineCode: line.lineCode)) {
+                            Text("\(line.displayId) · \(line.lineDescr)").lineLimit(2)
                         }
                     }
                 }
             }
-            .navigationTitle(String(localized: "tab_search"))
-            .searchable(text: $query, prompt: String(localized: "search_prompt"))
-            .onChange(of: query) { _, q in
-                Task { await runSearch(query: q) }
-            }
-            .task {
-                await catalog.ensureLoaded()
-                await catalog.sync()
-                if stopCache.isEmpty { await buildStopCache() }
-            }
-        }
-    }
-
-    private func runSearch(query q: String) async {
-        let t = q.trimmingCharacters(in: .whitespaces)
-        guard t.count >= 2 else {
-            stopResults = []
-            return
-        }
-        if stopCache.isEmpty { await buildStopCache() }
-        let hits = stopCache.filter { matchesGreekQuery(haystackNorm: $0.norm, query: t) }
-        stopResults = hits.prefix(30).map { ($0.code, $0.name) }
-    }
-
-    /// Incremental catalog sync: lines → routes → stops (throttled 24h via CatalogCache).
-    private func buildStopCache() async {
-        searching = true
-        defer { searching = false }
-        var seen = Set<String>()
-        var out: [(code: String, name: String, norm: String)] = []
-        let lines = Array(catalog.lines.prefix(80))
-        await withTaskGroup(of: [(String, String)].self) { group in
-            for line in lines {
-                group.addTask {
-                    guard let routes = try? await OasaAPI.shared.webGetRoutes(lineCode: line.lineCode) else { return [] }
-                    var pairs: [(String, String)] = []
-                    for r in routes.prefix(4) {
-                        let stops = (try? await OasaAPI.shared.webGetStops(routeCode: r.code)) ?? []
-                        pairs += stops.map { ($0.stopCode, $0.description) }
+            if query.trimmed.count >= 2 {
+                Section(L("stops_heading")) {
+                    if stopHits.isEmpty && catalog.isSyncing {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text(L("search_indexing_stops")).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
-                    return pairs
-                }
-            }
-            for await pairs in group {
-                for (code, name) in pairs where seen.insert(code).inserted {
-                    out.append((code, name, stopSearchNorm(stopCode: code, descr: name)))
+                    ForEach(stopHits, id: \.code) { s in
+                        NavigationLink(value: AppRoute.arrivals(stopCode: s.code, routeHint: nil)) {
+                            Text("\(s.name) (\(s.code))")
+                        }
+                    }
                 }
             }
         }
-        stopCache = out
-        let q = query.trimmingCharacters(in: .whitespaces)
-        if q.count >= 2 {
-            stopResults = stopCache.filter { matchesGreekQuery(haystackNorm: $0.norm, query: q) }
-                .prefix(30).map { ($0.code, $0.name) }
+        .navigationTitle(L("search_title"))
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: L("search_label_stop_or_line"))
+        .autocorrectionDisabled()
+        .textInputAutocapitalization(.never)
+        .task(id: query) {
+            // 250 ms debounce (Android onQueryChange).
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled else { return }
+            runSearch()
         }
+        .onChange(of: catalog.stopsRevision) { _, _ in runSearch() }
+        .onChange(of: catalog.lines.count) { _, _ in runSearch() }
+        .task { await startCatalog() }
+    }
+
+    private func startCatalog() async {
+        guard await catalog.warmLinesIfEmpty() else { return }
+        // Unstructured so leaving the tab does not cancel a multi-minute sync.
+        Task { await catalog.syncIncremental() }
+    }
+
+    private func runSearch() {
+        lineHits = catalog.searchLines(query)
+        stopHits = catalog.searchStops(query)
     }
 }

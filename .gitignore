@@ -16,3 +16,6 @@ keystore.properties
 *.keystore
 play-service-account.json
 distribution/whatsnew/
+
+# Xcode per-user state
+xcuserdata/

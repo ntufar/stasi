@@ -1,47 +1,81 @@
 import SwiftUI
 import CoreLocation
 
-// MARK: - Nearby stops via GPS, sorted by distance.
+// MARK: - Location (Android fused location equivalent). Never stored.
 
+@MainActor
 final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     @Published var location: CLLocation?
+    @Published var authorization: CLAuthorizationStatus
 
     override init() {
+        authorization = manager.authorizationStatus
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.distanceFilter = 50
+        location = manager.location
     }
 
+    var isAuthorized: Bool {
+        authorization == .authorizedWhenInUse || authorization == .authorizedAlways
+    }
+
+    var isDenied: Bool { authorization == .denied || authorization == .restricted }
+
+    /// One-shot fix (asks for permission first if needed).
     func request() {
-        manager.requestWhenInUseAuthorization()
+        if authorization == .notDetermined { manager.requestWhenInUseAuthorization() }
         manager.requestLocation()
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        location = locations.last
+    /// Continuous updates while a map is visible.
+    func start() {
+        if authorization == .notDetermined { manager.requestWhenInUseAuthorization() }
+        manager.startUpdatingLocation()
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+    func stop() { manager.stopUpdatingLocation() }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let last = locations.last
+        Task { @MainActor in self.location = last }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        Task { @MainActor in
+            self.authorization = status
+            if self.isAuthorized { manager.requestLocation() }
+        }
+    }
 }
+
+// MARK: - Nearby stops via GPS, sorted by distance (Android Home "Nearby stops").
 
 struct NearbyView: View {
     @StateObject private var locator = LocationManager()
     @State private var stops: [NearbyStop] = []
     @State private var loading = false
-    @State private var error: String?
+    @State private var failed = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                if loading { ProgressView().frame(maxWidth: .infinity) }
-                if let error {
-                    Text(error).foregroundStyle(.red).font(.caption)
-                }
-                ForEach(stops) { s in
-                    NavigationLink {
-                        ArrivalsView(stopCode: s.stopCode, stopName: s.description, routeHint: nil)
-                    } label: {
+        List {
+            if locator.isDenied {
+                Text(L("nearby_permission_denied")).font(.callout).foregroundStyle(.secondary)
+            }
+            if failed {
+                Text(L("home_nearby_load_failed")).font(.callout).foregroundStyle(.red)
+            }
+            if loading && stops.isEmpty {
+                HStack { Spacer(); ProgressView(); Spacer() }
+            }
+            ForEach(stops) { s in
+                NavigationLink(value: AppRoute.arrivals(stopCode: s.stopCode, routeHint: nil)) {
+                    HStack {
                         VStack(alignment: .leading) {
                             Text(s.description).font(.headline)
                             Text(s.stopCode).font(.caption).foregroundStyle(.secondary)
@@ -54,35 +88,32 @@ struct NearbyView: View {
                     }
                 }
             }
-            .navigationTitle(String(localized: "tab_nearby"))
-            .toolbar {
-                Button {
-                    locator.request()
-                } label: { Image(systemName: "location.fill") }
-            }
-            .refreshable { await refresh() }
-            .onReceive(locator.$location.compactMap { $0 }) { _ in
-                Task { await refresh() }
-            }
-            .task {
-                locator.request()
-                // Refresh once a fix likely arrived.
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                await refresh()
-            }
         }
+        .navigationTitle(L("home_nearby_stops"))
+        .toolbar {
+            Button { locator.request() } label: { Image(systemName: "location.fill") }
+                .accessibilityLabel(L("home_location_button"))
+        }
+        .refreshable {
+            locator.request()
+            await refresh()
+        }
+        .onReceive(locator.$location.compactMap { $0 }) { _ in
+            Task { await refresh() }
+        }
+        .task { locator.request() }
     }
 
     private func refresh() async {
         guard let loc = locator.location else { return }
         loading = true
-        error = nil
+        defer { loading = false }
         do {
-            stops = try await OasaAPI.shared.getClosestStops(
-                lat: loc.coordinate.latitude, lng: loc.coordinate.longitude)
+            stops = Array(try await OasaRepository.shared.getClosestStops(
+                lat: loc.coordinate.latitude, lng: loc.coordinate.longitude).prefix(20))
+            failed = false
         } catch {
-            self.error = String(localized: "nearby_error")
+            failed = true
         }
-        loading = false
     }
 }

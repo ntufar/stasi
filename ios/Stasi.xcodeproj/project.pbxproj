@@ -31,14 +31,27 @@
 		EE5AE6AE38DE497FBB9AE993 = {isa = PBXBuildFile; fileRef = 9D3692A21E4A4E2C81167E86; };
 		969BDDEAB62141258C0A2709 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Stasi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E8D57D659544AF7A995B7D3 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		1BA860C07EC143AFB84C4C9F = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		1BCAC23801F94286BA2994C1 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = el.lproj/Localizable.strings; sourceTree = "<group>"; };
+		1BA860C07EC143AFB84C4C9F = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		1BCAC23801F94286BA2994C1 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = el; path = el.lproj/Localizable.strings; sourceTree = "<group>"; };
 		50DE8E7147704E8FAE1DAEC9 = {isa = PBXVariantGroup; children = (1BA860C07EC143AFB84C4C9F, 1BCAC23801F94286BA2994C1,); name = Localizable.strings; sourceTree = "<group>"; };
-		014FE80826BC423784838828 = {isa = PBXBuildFile; fileRef = 1BA860C07EC143AFB84C4C9F; };
-		996E7491A6234FBDBB9F0060 = {isa = PBXBuildFile; fileRef = 1BCAC23801F94286BA2994C1; };
+		A1C0FFEE0000000000000001 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1C0FFEE0000000000000002 = {isa = PBXBuildFile; fileRef = A1C0FFEE0000000000000001; };
+		B2C0FFEE0000000000000101 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000201 = {isa = PBXBuildFile; fileRef = B2C0FFEE0000000000000101; };
+		B2C0FFEE0000000000000102 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schedule.swift; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000202 = {isa = PBXBuildFile; fileRef = B2C0FFEE0000000000000102; };
+		B2C0FFEE0000000000000103 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000203 = {isa = PBXBuildFile; fileRef = B2C0FFEE0000000000000103; };
+		B2C0FFEE0000000000000104 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OasaRepository.swift; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000204 = {isa = PBXBuildFile; fileRef = B2C0FFEE0000000000000104; };
+		B2C0FFEE0000000000000301 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000302 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = el; path = el.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000303 = {isa = PBXVariantGroup; children = (B2C0FFEE0000000000000301, B2C0FFEE0000000000000302,); name = InfoPlist.strings; sourceTree = "<group>"; };
+		B2C0FFEE0000000000000304 = {isa = PBXBuildFile; fileRef = B2C0FFEE0000000000000303; };
+		014FE80826BC423784838828 = {isa = PBXBuildFile; fileRef = 50DE8E7147704E8FAE1DAEC9; };
 		36290B3186A4441793041048 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		18C1182AA648465095B0F5EB = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (014FE80826BC423784838828, 996E7491A6234FBDBB9F0060,); runOnlyForDeploymentPostprocessing = 0; };
-		3C05FE9BEB4E452A8A67F283 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (E075FF385FFE4DB2802C835B, E462F4F2DC004F5E8CBEB726, C0487FA0C53E4C56B29AFF1C, 42F76BBE4EFC48D68772C61A, 38E5A9223E2A4B8193E9034E, 78CEC9251EFF48C18013797D, 78CD968376E04FD783293529, 5EBDA931DA244BDB9B6AD7A1, CFEBA6CFFEB74B0BB450CCAE, 7486F74212164EF3A83F6EAE, 67390235570D48FAABE37DC4, EE5AE6AE38DE497FBB9AE993,); runOnlyForDeploymentPostprocessing = 0; };
+		18C1182AA648465095B0F5EB = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (014FE80826BC423784838828, A1C0FFEE0000000000000002, B2C0FFEE0000000000000304,); runOnlyForDeploymentPostprocessing = 0; };
+		3C05FE9BEB4E452A8A67F283 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (E075FF385FFE4DB2802C835B, E462F4F2DC004F5E8CBEB726, C0487FA0C53E4C56B29AFF1C, 42F76BBE4EFC48D68772C61A, 38E5A9223E2A4B8193E9034E, 78CEC9251EFF48C18013797D, 78CD968376E04FD783293529, 5EBDA931DA244BDB9B6AD7A1, CFEBA6CFFEB74B0BB450CCAE, 7486F74212164EF3A83F6EAE, 67390235570D48FAABE37DC4, EE5AE6AE38DE497FBB9AE993, B2C0FFEE0000000000000201, B2C0FFEE0000000000000202, B2C0FFEE0000000000000203, B2C0FFEE0000000000000204,); runOnlyForDeploymentPostprocessing = 0; };
 		520D5F6435EE48809E7D5E5D = {isa = PBXGroup; children = (969BDDEAB62141258C0A2709,); name = Products; sourceTree = "<group>"; };
 		876BE7869362420E98CDF9EF = {isa = PBXGroup; children = (
 				8E3739987CD245F9A176C21F,
@@ -55,14 +68,20 @@
 				9D3692A21E4A4E2C81167E86,
 				50DE8E7147704E8FAE1DAEC9,
 				1E8D57D659544AF7A995B7D3,
+				A1C0FFEE0000000000000001,
+				B2C0FFEE0000000000000101,
+				B2C0FFEE0000000000000102,
+				B2C0FFEE0000000000000103,
+				B2C0FFEE0000000000000104,
+				B2C0FFEE0000000000000303,
 			); path = Stasi; sourceTree = "<group>"; };
 		E88C4A2435004487A5E6FEC3 = {isa = PBXGroup; children = (876BE7869362420E98CDF9EF, 520D5F6435EE48809E7D5E5D,); sourceTree = "<group>"; };
 		3521BB50D5BA4D438555AB4C = {isa = PBXNativeTarget; buildConfigurationList = B92B985B596F4332BACB834E; buildPhases = (3C05FE9BEB4E452A8A67F283, 36290B3186A4441793041048, 18C1182AA648465095B0F5EB,); buildRules = (); dependencies = (); name = Stasi; productName = Stasi; productReference = 969BDDEAB62141258C0A2709; productType = "com.apple.product-type.application"; };
 		F7D95268EB764C9D965550E2 = {isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1700; }; buildConfigurationList = BBCAA8FFEFDF4FCB96D8629E; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, el,); mainGroup = E88C4A2435004487A5E6FEC3; productRefGroup = 520D5F6435EE48809E7D5E5D; projectDirPath = ""; projectRoot = ""; targets = (3521BB50D5BA4D438555AB4C,); };
-		66E4BAE73E414DD99AE556DA = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 10; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
-		07CAD951963A4C45891A765E = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 10; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
-		FFFDC20455984A4B8DDA0846 = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 10; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; CLANG_ENABLE_MODULES = YES; ENABLE_PREVIEWS = YES; SDKROOT = iphoneos; INFOPLIST_KEY_UILaunchScreen_Generation = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");}; name = Debug; };
-		B04521DA85BA44809FC1B41F = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 10; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; CLANG_ENABLE_MODULES = YES; ENABLE_PREVIEWS = YES; SDKROOT = iphoneos; INFOPLIST_KEY_UILaunchScreen_Generation = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");}; name = Release; };
+		66E4BAE73E414DD99AE556DA = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 12; DEVELOPMENT_TEAM = 6CT959RWB8; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
+		07CAD951963A4C45891A765E = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 12; DEVELOPMENT_TEAM = 6CT959RWB8; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
+		FFFDC20455984A4B8DDA0846 = {isa = XCBuildConfiguration; buildSettings = {SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 12; DEVELOPMENT_TEAM = 6CT959RWB8; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CLANG_ENABLE_MODULES = YES; ENABLE_PREVIEWS = YES; SDKROOT = iphoneos; INFOPLIST_KEY_UILaunchScreen_Generation = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");}; name = Debug; };
+		B04521DA85BA44809FC1B41F = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 12; DEVELOPMENT_TEAM = 6CT959RWB8; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = Stasi/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.2.5; PRODUCT_BUNDLE_IDENTIFIER = io.github.ntufar.stasi; PRODUCT_NAME = Stasi; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CLANG_ENABLE_MODULES = YES; ENABLE_PREVIEWS = YES; SDKROOT = iphoneos; INFOPLIST_KEY_UILaunchScreen_Generation = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");}; name = Release; };
 		BBCAA8FFEFDF4FCB96D8629E = {isa = XCConfigurationList; buildConfigurations = (66E4BAE73E414DD99AE556DA, 07CAD951963A4C45891A765E,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		B92B985B596F4332BACB834E = {isa = XCConfigurationList; buildConfigurations = (FFFDC20455984A4B8DDA0846, B04521DA85BA44809FC1B41F,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 	};
