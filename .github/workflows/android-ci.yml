@@ -47,6 +47,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
@@ -85,6 +87,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew

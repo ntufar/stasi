@@ -69,6 +69,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Make scripts and Gradle wrapper executable
         run: |
