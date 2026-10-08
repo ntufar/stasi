@@ -115,3 +115,6 @@
 
 "tab_nearby" = "Nearby";
 "tab_map" = "Map";
+
+"example_stop_note" = "Stasi shows live bus arrivals for Athens, Greece. Nearby stops and favorites only appear when you are in the Athens area. You can try the app from anywhere with an example stop.";
+"example_stop_button" = "Try an example stop";

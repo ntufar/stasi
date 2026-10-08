@@ -73,6 +73,9 @@ struct NearbyView: View {
             if loading && stops.isEmpty {
                 HStack { Spacer(); ProgressView(); Spacer() }
             }
+            if stops.isEmpty && !loading {
+                ExampleStopButton()
+            }
             ForEach(stops) { s in
                 NavigationLink(value: AppRoute.arrivals(stopCode: s.stopCode, routeHint: nil)) {
                     HStack {

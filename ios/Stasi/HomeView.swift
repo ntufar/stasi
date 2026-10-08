@@ -35,6 +35,7 @@ struct HomeView: View {
             Section(L("home_favorites")) {
                 if appState.favorites.isEmpty {
                     Text(L("home_favorites_empty")).foregroundStyle(.secondary)
+                    ExampleStopButton()
                 }
                 ForEach(appState.favorites) { fav in
                     NavigationLink(value: AppRoute.arrivals(stopCode: fav.stopCode, routeHint: nil)) {
@@ -223,6 +224,22 @@ private struct AddFavoriteSheet: View {
                     Button(L("action_cancel")) { dismiss() }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Example stop: visible on-screen way to try live data from any location.
+
+let exampleStopCode = "060105"
+
+struct ExampleStopButton: View {
+    @EnvironmentObject var router: Router
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("example_stop_note")).font(.footnote).foregroundStyle(.secondary)
+            Button(L("example_stop_button")) { router.openStop(exampleStopCode) }
+                .buttonStyle(.borderedProminent)
         }
     }
 }
