@@ -118,3 +118,8 @@
 
 "example_stop_note" = "Stasi shows live bus arrivals for Athens, Greece. Nearby stops and favorites only appear when you are in the Athens area. You can try the app from anywhere with an example stop.";
 "example_stop_button" = "Try an example stop";
+"demo_banner" = "Live data is not available here. Showing demo data.";
+"demo_retry" = "Try live data";
+"settings_demo_heading" = "Demo data";
+"settings_demo_toggle" = "Use demo data";
+"settings_demo_note" = "The Athens bus service may not answer outside Greece. Demo data shows the app with two sample lines. It turns on by itself when live data is not reachable.";

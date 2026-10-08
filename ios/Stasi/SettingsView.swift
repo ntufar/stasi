@@ -5,6 +5,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
+    @ObservedObject private var demo = DemoMode.shared
 
     private var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
@@ -28,6 +29,12 @@ struct SettingsView: View {
             }
             Section(L("settings_map")) {
                 Toggle(L("settings_map_stop_names_label"), isOn: $appState.showMapStopNames)
+            }
+            Section(L("settings_demo_heading")) {
+                Toggle(L("settings_demo_toggle"), isOn: Binding(
+                    get: { demo.isActive },
+                    set: { $0 ? demo.activate() : demo.useLiveData() }))
+                Text(L("settings_demo_note")).font(.caption).foregroundStyle(.secondary)
             }
             Section(L("settings_theme_heading")) {
                 Picker(L("settings_theme_heading"), selection: $appState.darkMode) {

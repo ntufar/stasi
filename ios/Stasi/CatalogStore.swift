@@ -204,8 +204,15 @@ final class CatalogStore: ObservableObject {
                 storeRouteStops(r.routeCode, mapWebStops(stopRows))
             }
         }
-        data.fullSyncAt = now
+        // Demo data must not delay the next real sync.
+        if !DemoMode.shared.isActive { data.fullSyncAt = now }
         scheduleSave()
+    }
+
+    /// Leaving demo mode: sync the live catalog again on the next opportunity.
+    func liveDataRestored() {
+        data.fullSyncAt = nil
+        Task { await syncIncremental() }
     }
 
     private func fetchLines() async throws -> [BusLine] {

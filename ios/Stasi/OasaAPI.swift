@@ -42,12 +42,26 @@ final class OasaAPI {
     private let limiter = EndpointRateLimiter()
     private let session: URLSession = {
         let c = URLSessionConfiguration.default
-        c.timeoutIntervalForRequest = 30
-        c.timeoutIntervalForResource = 45
+        c.timeoutIntervalForRequest = 10
+        c.timeoutIntervalForResource = 20
         return URLSession(configuration: c)
     }()
 
     private func post(act: String, gate: String? = nil, params: [String: String]) async throws -> Any? {
+        if await DemoMode.shared.isActive { return DemoData.response(act: act, params: params) }
+        do {
+            return try await livePost(act: act, gate: gate, params: params)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Live data is unreachable (for example outside Greece): use the bundled sample.
+            if (error as? URLError)?.code == .cancelled { throw error }
+            await DemoMode.shared.activate()
+            return DemoData.response(act: act, params: params)
+        }
+    }
+
+    private func livePost(act: String, gate: String?, params: [String: String]) async throws -> Any? {
         await limiter.wait(gate: gate ?? act)
         var comps = URLComponents(string: "https://telematics.oasa.gr/api/")!
         comps.queryItems = [URLQueryItem(name: "act", value: act)]

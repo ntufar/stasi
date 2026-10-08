@@ -45,6 +45,13 @@ final class OasaRepository {
     private var stopLabelCache: [String: String] = [:]
     private var inflight: [String: Task<Any, Error>] = [:]
 
+    /// Drop every cached value (used when leaving demo mode).
+    func resetCaches() {
+        timetableCache = [:]; routesForStopCache = [:]; routeStopsCache = [:]; busCache = [:]
+        closestCache = [:]; lineRouteInfoCache = [:]; arrivalsCache = [:]
+        originStopCache = [:]; stopLabelCache = [:]
+    }
+
     /// Share one in-flight task per key (Android uses a Mutex per key).
     private func coalesced<T>(_ key: String, _ op: @escaping @MainActor () async throws -> T) async throws -> T {
         if let running = inflight[key] {

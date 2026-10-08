@@ -33,6 +33,13 @@ struct ContentView: View {
     @EnvironmentObject var router: Router
 
     var body: some View {
+        VStack(spacing: 0) {
+            DemoBanner()
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $router.tab) {
             NavigationStack(path: $router.homePath) {
                 HomeView().withAppRoutes { router.homePath.append($0) }
