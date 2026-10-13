@@ -23,7 +23,7 @@ android {
         applicationId = "io.github.ntufar.stasi"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
+        versionCode = 11
         versionName = "0.2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         if (stasiAbiArm64Only) {
