@@ -388,7 +388,17 @@ struct RouteMapView: View {
                 }
                 .annotationTitles(.hidden)
             }
-            UserAnnotation()
+            // A larger marker than the default user dot, so the position is easy to find.
+            if let user = locator.location?.coordinate {
+                Annotation(L("cd_my_location"), coordinate: user, anchor: .center) {
+                    ZStack {
+                        Circle().fill(Color.blue.opacity(0.25)).frame(width: 40, height: 40)
+                        Circle().fill(Color.blue).frame(width: 18, height: 18)
+                        Circle().stroke(.white, lineWidth: 3).frame(width: 18, height: 18)
+                    }
+                }
+                .annotationTitles(.hidden)
+            }
         }
         .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .mapControls {
