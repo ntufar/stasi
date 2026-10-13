@@ -11,7 +11,11 @@ final class DemoMode: ObservableObject {
     static let shared = DemoMode()
     @Published private(set) var isActive = false
 
-    func activate() { isActive = true }
+    func activate() {
+        guard !isActive else { return }
+        isActive = true
+        CatalogStore.shared.enterDemo()
+    }
 
     func useLiveData() {
         guard isActive else { return }

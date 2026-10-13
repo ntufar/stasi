@@ -40,6 +40,8 @@ final class CatalogStore: ObservableObject {
     @Published private(set) var stopsRevision = 0
 
     private var data = CatalogData()
+    /// The live catalog, kept while demo mode shows the bundled sample. Nil when live.
+    private var liveCatalog: CatalogData?
     private var lineNorms: [String: String] = [:]
     private var stopIndex: [(code: String, name: String, norm: String)]?
     private var saveTask: Task<Void, Never>?
@@ -209,18 +211,56 @@ final class CatalogStore: ObservableObject {
         scheduleSave()
     }
 
-    /// Leaving demo mode: sync the live catalog again on the next opportunity.
+    /// Leaving demo mode: restore the live catalog and sync it again on the next opportunity.
     func liveDataRestored() {
+        leaveDemo()
         data.fullSyncAt = nil
         Task { await syncIncremental() }
     }
 
-    private func fetchLines() async throws -> [BusLine] {
-        try await OasaAPI.shared.webGetLines().compactMap { j in
-            let code = j.s("LineCode")
-            guard !code.isEmpty else { return nil }
-            return BusLine(lineCode: code, lineId: j.s("LineID"), lineDescr: j.s("LineDescr"))
+    /// Demo mode: replace the catalog with the bundled sample. The live catalog stays in memory.
+    func enterDemo() {
+        guard liveCatalog == nil else { return }
+        liveCatalog = data
+        data = Self.demoCatalog()
+        publishLines()
+        linesState = .ready
+        stopIndex = nil
+        stopsRevision += 1
+    }
+
+    /// Leave demo mode: put the saved live catalog back in place.
+    private func leaveDemo() {
+        guard let live = liveCatalog else { return }
+        liveCatalog = nil
+        data = live
+        publishLines()
+        stopIndex = nil
+        stopsRevision += 1
+    }
+
+    /// Build a catalog from the bundled sample, the same way a live sync fills it.
+    private static func demoCatalog() -> CatalogData {
+        var catalog = CatalogData()
+        let lineRows = DemoData.response(act: "webGetLines", params: [:]) as? [JSONRow] ?? []
+        catalog.lines = busLines(from: lineRows)
+        for line in catalog.lines {
+            let routeRows = DemoData.response(act: "webGetRoutes", params: ["p1": line.lineCode]) as? [JSONRow] ?? []
+            for route in routeRows.compactMap({ catalogRoute($0, fallbackLine: line.lineCode) }) {
+                catalog.routes[route.routeCode] = route
+                let stopRows = DemoData.response(act: "webGetStops", params: ["p1": route.routeCode]) as? [JSONRow] ?? []
+                let stops = mapWebStops(stopRows)
+                catalog.routeStops[route.routeCode] = stops
+                for s in stops {
+                    catalog.stops[s.stopCode] = CatalogStop(descr: s.description, lat: s.lat, lng: s.lng)
+                }
+            }
         }
+        return catalog
+    }
+
+    private func fetchLines() async throws -> [BusLine] {
+        busLines(from: try await OasaAPI.shared.webGetLines())
     }
 
     // MARK: Persistence
@@ -233,11 +273,13 @@ final class CatalogStore: ObservableObject {
     }
 
     private func scheduleSave() {
+        // Demo data must never replace the saved live catalog.
+        guard liveCatalog == nil else { return }
         saveTask?.cancel()
+        let snapshot = data
         saveTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             guard !Task.isCancelled else { return }
-            let snapshot = data
             let url = fileURL
             await Task.detached(priority: .utility) {
                 if let encoded = try? JSONEncoder().encode(snapshot) {
@@ -252,6 +294,14 @@ private func lineSortKey(_ l: BusLine) -> (Int, String) {
     // Numeric public numbers in numeric order ("2" < "10"), then the rest.
     let digits = l.lineId.prefix { $0.isNumber }
     return (Int(digits) ?? Int.max, l.lineId)
+}
+
+func busLines(from rows: [JSONRow]) -> [BusLine] {
+    rows.compactMap { j in
+        let code = j.s("LineCode")
+        guard !code.isEmpty else { return nil }
+        return BusLine(lineCode: code, lineId: j.s("LineID"), lineDescr: j.s("LineDescr"))
+    }
 }
 
 func catalogRoute(_ j: JSONRow, fallbackLine: String) -> CatalogRoute? {
