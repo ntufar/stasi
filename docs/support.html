@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  GitHub Pages: same /docs folder as index.html
+  Public URL: https://ntufar.github.io/stasi/support.html
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support — Stasi</title>
+  <meta name="description" content="Support for Stasi, the Athens bus arrivals app for Android and iPhone. Ask questions and report problems.">
+  <meta property="og:title" content="Support — Stasi">
+  <meta property="og:description" content="Support for Stasi, the Athens bus arrivals app for Android and iPhone. Ask questions and report problems.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ntufar.github.io/stasi/support.html">
+  <link rel="canonical" href="https://ntufar.github.io/stasi/support.html">
+  <link rel="icon" href="favicon.png?v=2" type="image/png" sizes="192x192">
+  <style>
+    :root {
+      --bg: #07080c;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #4fc3f7;
+      --max: 720px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    main {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    h1 { font-size: 2rem; margin: 0 0 8px; }
+    h2 { font-size: 1.25rem; margin: 32px 0 8px; }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    a { color: var(--accent); }
+    footer { margin-top: 48px; color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Stasi Support</h1>
+    <p class="muted">Stasi shows live Athens bus arrivals from the OASA Telematics API.</p>
+
+    <h2>Contact</h2>
+    <p>To ask a question or request support, open a new issue on GitHub:
+      <a href="https://github.com/ntufar/stasi/issues">github.com/ntufar/stasi/issues</a>.</p>
+    <p>Before you open an issue, include these details:</p>
+    <ul>
+      <li>The app version and build number (Settings).</li>
+      <li>Your device model and iOS or Android version.</li>
+      <li>The steps that cause the problem.</li>
+    </ul>
+
+    <h2>Live data and demo data</h2>
+    <p>The OASA API answers only on some networks. Outside Greece, it can be unreachable.
+      When this happens, the app shows a banner and bundled demo data for two sample lines.
+      Tap <strong>Try live data</strong> on the banner, or turn off <strong>Use demo data</strong> in Settings, to retry live data.</p>
+
+    <h2>Privacy</h2>
+    <p>Read the <a href="privacy.html">privacy policy</a>.</p>
+
+    <footer>
+      <p>© Stasi contributors · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a></p>
+    </footer>
+  </main>
+</body>
+</html>
