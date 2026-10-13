@@ -26,6 +26,7 @@ final class DemoMode: ObservableObject {
 }
 
 struct DemoBanner: View {
+    @EnvironmentObject var appState: AppState
     @ObservedObject private var demo = DemoMode.shared
 
     var body: some View {

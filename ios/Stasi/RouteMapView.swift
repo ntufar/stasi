@@ -567,6 +567,7 @@ func bearingDegrees(_ lat1: Double, _ lng1: Double, _ lat2: Double, _ lng2: Doub
 // MARK: - Timetable tab (origin | terminus on the same row)
 
 private struct TimetablePanel: View {
+    @EnvironmentObject var appState: AppState
     @ObservedObject var model: RouteMapModel
 
     var body: some View {

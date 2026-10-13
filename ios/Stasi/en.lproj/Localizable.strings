@@ -55,7 +55,7 @@
 "minutes_short" = "%ld min";
 
 "search_title" = "Search";
-"search_label_stop_or_line" = "Stop or line (syntagma works)";
+"search_label_stop_or_line" = "Stop or line (for example, syntagma)";
 "search_loading_catalog" = "Loading line catalog…";
 "search_catalog_unavailable" = "Could not load lines from the OASA server. Check your network connection.";
 "search_indexing_stops" = "Indexing stops…";

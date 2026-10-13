@@ -233,6 +233,7 @@ private struct AddFavoriteSheet: View {
 let exampleStopCode = "060105"
 
 struct ExampleStopButton: View {
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var router: Router
 
     var body: some View {

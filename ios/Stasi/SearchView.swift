@@ -6,6 +6,7 @@ import SwiftUI
 // that fills the stop index.
 
 struct SearchView: View {
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var catalog: CatalogStore
     @State private var query = ""
     @State private var lineHits: [BusLine] = []

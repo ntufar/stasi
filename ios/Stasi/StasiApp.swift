@@ -11,9 +11,6 @@ struct StasiApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                // Rebuild the tree when the language changes so every `L(...)` re-renders
-                // immediately (Android recreates the activity).
-                .id(appState.localeTag)
                 .environmentObject(appState)
                 .environmentObject(catalog)
                 .environmentObject(router)
@@ -30,6 +27,7 @@ struct StasiApp: App {
 }
 
 struct ContentView: View {
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var router: Router
 
     var body: some View {

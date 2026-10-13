@@ -57,6 +57,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 // MARK: - Nearby stops via GPS, sorted by distance (Android Home "Nearby stops").
 
 struct NearbyView: View {
+    @EnvironmentObject var appState: AppState
     @StateObject private var locator = LocationManager()
     @State private var stops: [NearbyStop] = []
     @State private var loading = false
