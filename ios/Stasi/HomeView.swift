@@ -230,7 +230,8 @@ private struct AddFavoriteSheet: View {
 
 // MARK: - Example stop: visible on-screen way to try live data from any location.
 
-let exampleStopCode = "060105"
+// Syntagma: a busy stop with many lines, so the arrivals screen shows buses.
+let exampleStopCode = "10361"
 
 struct ExampleStopButton: View {
     @EnvironmentObject var appState: AppState
