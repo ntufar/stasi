@@ -15,66 +15,59 @@
   <meta property="og:url" content="https://ntufar.github.io/stasi/support.html">
   <link rel="canonical" href="https://ntufar.github.io/stasi/support.html">
   <link rel="icon" href="favicon.png?v=2" type="image/png" sizes="192x192">
-  <style>
-    :root {
-      --bg: #07080c;
-      --text: #e8eaef;
-      --muted: #8b93a7;
-      --accent: #4fc3f7;
-      --max: 720px;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.65;
-    }
-
-    main {
-      max-width: var(--max);
-      margin: 0 auto;
-      padding: 48px 20px 64px;
-    }
-
-    h1 { font-size: 2rem; margin: 0 0 8px; }
-    h2 { font-size: 1.25rem; margin: 32px 0 8px; }
-    p, li { color: var(--text); }
-    .muted { color: var(--muted); }
-    a { color: var(--accent); }
-    footer { margin-top: 48px; color: var(--muted); font-size: 0.9rem; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="page.css">
 </head>
 <body>
-  <main>
-    <h1>Stasi Support</h1>
-    <p class="muted">Stasi shows live Athens bus arrivals from the OASA Telematics API.</p>
+  <div class="noise" aria-hidden="true"></div>
+  <a class="skip" href="#main">Skip to content</a>
 
-    <h2>Contact</h2>
-    <p>To ask a question or request support, open a new issue on GitHub:
-      <a href="https://github.com/ntufar/stasi/issues">github.com/ntufar/stasi/issues</a>.</p>
-    <p>Before you open an issue, include these details:</p>
-    <ul>
-      <li>The app version and build number (Settings).</li>
-      <li>Your device model and iOS or Android version.</li>
-      <li>The steps that cause the problem.</li>
-    </ul>
+  <div class="wrap bar">
+    <a class="brand" href="index.html">
+      <img src="app-icon.png?v=2" width="40" height="40" alt="Stasi app icon">
+      <span>Stasi</span>
+    </a>
+  </div>
 
-    <h2>Live data and demo data</h2>
-    <p>The OASA API answers only on some networks. Outside Greece, it can be unreachable.
-      When this happens, the app shows a banner and bundled demo data for two sample lines.
-      Tap <strong>Try live data</strong> on the banner, or turn off <strong>Use demo data</strong> in Settings, to retry live data.</p>
+  <header class="wrap page-head">
+    <a class="back" href="index.html">← Back to Stasi</a>
+    <h1>Stasi support</h1>
+    <p class="intro">Stasi shows live Athens bus arrivals from the OASA Telematics API.</p>
+  </header>
 
-    <h2>Privacy</h2>
-    <p>Read the <a href="privacy.html">privacy policy</a>.</p>
+  <main id="main" class="wrap content">
+    <div class="prose">
+      <h2>Contact</h2>
+      <p>To ask a question or request support, open a new issue on GitHub:
+        <a href="https://github.com/ntufar/stasi/issues">github.com/ntufar/stasi/issues</a>.</p>
+      <p>Before you open an issue, include these details:</p>
+      <ul>
+        <li>The app version and build number (Settings).</li>
+        <li>Your device model and iOS or Android version.</li>
+        <li>The steps that cause the problem.</li>
+      </ul>
 
-    <footer>
-      <p>© Stasi contributors · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ntufar/stasi">github.com/ntufar/stasi</a></p>
-    </footer>
+      <h2>Live data and demo data</h2>
+      <p>The OASA API answers only on some networks. Outside Greece, it can be unreachable.
+        When this happens, the app shows a banner and bundled demo data for two sample lines.
+        Tap <strong>Try live data</strong> on the banner, or turn off <strong>Use demo data</strong> in Settings, to retry live data.</p>
+
+      <h2>Privacy</h2>
+      <p>Read the <a href="privacy.html">privacy policy</a>.</p>
+    </div>
   </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Copyright © Nicolai Tufar</span>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="index.html">Home</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/ntufar/stasi">GitHub</a>
+      </nav>
+    </div>
+  </footer>
 </body>
 </html>

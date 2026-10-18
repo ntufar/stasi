@@ -30,221 +30,44 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #07080c;
-      --surface: #11131a;
-      --border: #1e2230;
-      --text: #e8eaef;
-      --muted: #8b93a7;
-      --accent: #4fc3f7;
-      --accent-dim: rgba(79, 195, 247, 0.12);
-      --radius: 14px;
-      --max: 720px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html[lang="en"] .i18n-el,
-    html[lang="el"] .i18n-en {
-      display: none !important;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "DM Sans", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .noise {
-      pointer-events: none;
-      position: fixed;
-      inset: 0;
-      opacity: 0.04;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      z-index: 0;
-    }
-
-    header, main, footer {
-      position: relative;
-      z-index: 1;
-    }
-
-    .wrap {
-      max-width: var(--max);
-      margin: 0 auto;
-      padding: 0 1.25rem;
-    }
-
-    header {
-      padding: 2rem 0 1.5rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .header-top {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .lang-switch {
-      display: inline-flex;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      background: var(--surface);
-    }
-
-    .lang-switch button {
-      font: inherit;
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 0.45rem 0.75rem;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .lang-switch button[aria-pressed="true"] {
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-
-    .back {
-      font-size: 0.9rem;
-      color: var(--muted);
-      text-decoration: none;
-    }
-
-    .back:hover { color: var(--accent); }
-
-    h1 {
-      font-size: clamp(1.75rem, 4vw, 2.25rem);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      margin: 0 0 0.5rem;
-    }
-
-    .effective {
-      margin: 0;
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    .effective code {
-      font-size: 0.85em;
-      color: var(--text);
-    }
-
-    .prose code {
-      font-size: 0.88em;
-      color: var(--text);
-    }
-
-    main {
-      padding: 2rem 0 3rem;
-    }
-
-    .prose {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem 1.6rem;
-    }
-
-    .prose h2 {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin: 2rem 0 0.75rem;
-      letter-spacing: -0.02em;
-    }
-
-    .prose h2:first-child {
-      margin-top: 0;
-    }
-
-    .prose p {
-      margin: 0 0 1rem;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .prose ul {
-      margin: 0 0 1rem;
-      padding-left: 1.25rem;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .prose li { margin-bottom: 0.4rem; }
-
-    .prose a {
-      color: var(--accent);
-      text-decoration: none;
-      border-bottom: 1px solid rgba(79, 195, 247, 0.35);
-    }
-
-    .prose a:hover {
-      border-bottom-color: var(--accent);
-    }
-
-    .prose strong {
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    footer {
-      padding: 1.5rem 0 2rem;
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.9rem;
-      text-align: center;
-    }
-
-    footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    footer a:hover { text-decoration: underline; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap&subset=greek,latin" rel="stylesheet">
+  <link rel="stylesheet" href="page.css">
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
 
-  <header>
-    <div class="wrap">
-      <div class="header-top">
-        <a class="back" href="index.html">
-          <span class="i18n-en">← Back to Stasi</span>
-          <span class="i18n-el">← Επιστροφή στη Στάση</span>
-        </a>
-        <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
-          <button type="button" data-lang="en" aria-pressed="false">EN</button>
-          <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
-        </div>
-      </div>
-      <h1>
-        <span class="i18n-en">Privacy Policy</span>
-        <span class="i18n-el">Πολιτική Απορρήτου</span>
-      </h1>
-      <p class="effective">
-        <span class="i18n-en">Effective date: 1 October 2026 · App ID (Android package and iOS bundle ID): <code>io.github.ntufar.stasi</code></span>
-        <span class="i18n-el">Ημερομηνία ισχύος: 1 Οκτωβρίου 2026 · Αναγνωριστικό εφαρμογής (πακέτο Android και bundle ID iOS): <code>io.github.ntufar.stasi</code></span>
-      </p>
+  <a class="skip" href="#main"><span class="i18n-en">Skip to content</span><span class="i18n-el">Μετάβαση στο περιεχόμενο</span></a>
+
+  <div class="wrap bar">
+    <a class="brand" href="index.html">
+      <img src="app-icon.png?v=2" width="40" height="40" alt="Stasi app icon">
+      <span>Stasi</span>
+    </a>
+    <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="el" aria-pressed="false">ΕΛ</button>
     </div>
+  </div>
+
+  <header class="wrap page-head">
+    <a class="back" href="index.html">
+      <span class="i18n-en">← Back to Stasi</span>
+      <span class="i18n-el">← Επιστροφή στη Στάση</span>
+    </a>
+    <h1>
+      <span class="i18n-en">Privacy Policy</span>
+      <span class="i18n-el">Πολιτική Απορρήτου</span>
+    </h1>
+    <p class="effective">
+      <span class="i18n-en">Effective date: 1 October 2026 · App ID (Android package and iOS bundle ID): <code>io.github.ntufar.stasi</code></span>
+      <span class="i18n-el">Ημερομηνία ισχύος: 1 Οκτωβρίου 2026 · Αναγνωριστικό εφαρμογής (πακέτο Android και bundle ID iOS): <code>io.github.ntufar.stasi</code></span>
+    </p>
   </header>
 
-  <main>
-    <div class="wrap">
+  <main id="main" class="wrap content">
+    <div>
       <article class="prose">
 
         <h2 class="i18n-en">1. Who we are</h2>
@@ -462,10 +285,13 @@
 
   <footer>
     <div class="wrap">
-      <p>
-        <span class="i18n-en">© Stasi contributors · <a href="index.html">Home</a> · <a href="https://github.com/ntufar/stasi">GitHub</a></span>
-        <span class="i18n-el">© Συνεισφέροντες Stasi · <a href="index.html">Αρχική</a> · <a href="https://github.com/ntufar/stasi">GitHub</a></span>
-      </p>
+      <span class="i18n-en">Copyright © Nicolai Tufar</span>
+      <span class="i18n-el">Copyright © Nicolai Tufar</span>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="index.html"><span class="i18n-en">Home</span><span class="i18n-el">Αρχική</span></a>
+        <a href="support.html"><span class="i18n-en">Support</span><span class="i18n-el">Υποστήριξη</span></a>
+        <a href="https://github.com/ntufar/stasi">GitHub</a>
+      </nav>
     </div>
   </footer>
 
