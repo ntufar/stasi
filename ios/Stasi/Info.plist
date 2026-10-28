@@ -46,7 +46,7 @@
 		<false/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Nearby stops need your location. Location is never stored.</string>
+	<string>Stasi uses your location to show the bus, tram, and metro stops near you. For example, when you open the Nearby tab, the app lists the closest stops and their arrival times. The app does not store your location.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
