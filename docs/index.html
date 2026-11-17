@@ -38,6 +38,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://play.google.com">
+  <link rel="dns-prefetch" href="https://apps.apple.com">
   <link rel="dns-prefetch" href="https://github.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap&subset=greek,latin" rel="stylesheet">
   <style>
@@ -294,6 +295,16 @@
     .play-badge:active { transform: scale(0.98); }
     .play-badge img { height: 4.5rem; width: auto; }
     .play-badge img.i18n-el { height: 3.4rem; margin: 0.55rem 0.9rem; }
+
+    .app-store-badge {
+      display: inline-block;
+      line-height: 0;
+      transition: transform 0.2s var(--ease);
+    }
+
+    .app-store-badge:hover { transform: translateY(-2px); }
+    .app-store-badge:active { transform: scale(0.98); }
+    .app-store-badge img { height: 3.4rem; width: auto; }
 
     .text-link {
       font-weight: 600;
@@ -683,7 +694,7 @@
     "description": "Open-source Android app for Athens public transport: live arrivals, arrival alerts, route maps and timetables, nearby stops. No ads or accounts.",
     "url": "https://ntufar.github.io/stasi/",
     "applicationCategory": "Utilities",
-    "operatingSystem": "Android",
+    "operatingSystem": "Android, iOS",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -714,7 +725,8 @@
     "url": "https://github.com/ntufar/stasi",
     "sameAs": [
       "https://github.com/ntufar/stasi",
-      "https://play.google.com/store/apps/details?id=io.github.ntufar.stasi"
+      "https://play.google.com/store/apps/details?id=io.github.ntufar.stasi",
+      "https://apps.apple.com/app/id6818117885"
     ]
   }
   </script>
@@ -769,6 +781,10 @@
             <a class="play-badge" href="https://play.google.com/store/apps/details?id=io.github.ntufar.stasi">
               <img class="i18n-en" src="google-play-badge-en.png" width="646" height="250" alt="Get it on Google Play">
               <img class="i18n-el" src="google-play-badge-el.png" width="646" height="250" alt="Αποκτήστε το στο Google Play">
+            </a>
+            <a class="app-store-badge" href="https://apps.apple.com/app/id6818117885">
+              <img class="i18n-en" src="app-store-badge-en.svg" width="120" height="40" alt="Download on the App Store">
+              <img class="i18n-el" src="app-store-badge-el.svg" width="120" height="40" alt="Λήψη από το App Store">
             </a>
             <a class="text-link" href="https://github.com/ntufar/stasi">
               <span class="i18n-en">View on GitHub</span>
