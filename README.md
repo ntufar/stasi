@@ -8,6 +8,7 @@
 [![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?logo=android&logoColor=white)](https://developer.android.com/about/versions)
 [![Website](https://img.shields.io/badge/website-ntufar.github.io%2Fstasi-blue)](https://ntufar.github.io/stasi/)
 [![Google Play](https://img.shields.io/badge/Google_Play-3DDC84?logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=io.github.ntufar.stasi)
+[![App Store](https://img.shields.io/badge/App_Store-0D96F6?logo=app-store&logoColor=white)](https://apps.apple.com/app/id6818117885)
 
 **Stasi** is a fast, privacy-minded Android app for **Athens public transport**. It talks to the official OASA Telematics API to show live arrivals, nearby stops, and route maps—without ads, sign-in, or extra clutter.
 
